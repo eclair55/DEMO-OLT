@@ -1,3 +1,7 @@
+# Visual Studio
+.vs/
+**/.vs/
+
 # .NET build output
 **/bin/
 **/obj/

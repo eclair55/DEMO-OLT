@@ -9,7 +9,7 @@ import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import Overlay from 'ol/Overlay';
 import WKT from 'ol/format/WKT';
-import { Style, Circle, Fill, Stroke, Text } from 'ol/style';
+import { Style, Circle, Fill, Stroke, Text, RegularShape } from 'ol/style';
 import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 
@@ -78,7 +78,21 @@ export default function MapView({
     const lcpStyle = (feature) => {
       const id = feature.get('ODNC_ODN_CONT_ID');
       const isSelected = id === selectedLcpId;
+      const isPoint = feature.getGeometry()?.getType() === 'Point';
       return new Style({
+        image: isPoint
+          ? new RegularShape({
+              points: 3,
+              radius: isSelected ? 12 : 9,
+              rotation: 0,
+              angle: 0,
+              fill: new Fill({ color: '#facc15' }),
+              stroke: new Stroke({
+                color: isSelected ? '#92400e' : '#a16207',
+                width: isSelected ? 3 : 2
+              })
+            })
+          : undefined,
         stroke: new Stroke({
           color: isSelected ? '#047857' : '#059669',
           width: isSelected ? 6 : 4
@@ -88,6 +102,7 @@ export default function MapView({
         }),
         text: new Text({
           text: id || '',
+          offsetY: isPoint ? -20 : 0,
           fill: new Fill({ color: '#064e3b' }),
           stroke: new Stroke({ color: '#ffffff', width: 2 }),
           font: 'bold 11px sans-serif'
@@ -96,7 +111,7 @@ export default function MapView({
     };
 
     const napStyle = (feature) => {
-      const napId = feature.get('NAP_ID') || 'NAP';
+      const napId = feature.get('ODNC_ODN_CONT_ID') || feature.get('NAP_ID') || 'NAP';
       return new Style({
         image: new Circle({
           radius: 6,
@@ -183,7 +198,7 @@ export default function MapView({
         hit = true;
         const oltCode = feature.get('OLT_CODE');
         const lcpId = feature.get('ODNC_ODN_CONT_ID');
-        const napId = feature.get('NAP_ID');
+        const napId = feature.get('ODNC_ODN_CONT_ID') || feature.get('NAP_ID');
 
         let text = '';
         if (oltCode) text = `<strong>OLT</strong><br/>Code: ${oltCode}`;
@@ -210,12 +225,20 @@ export default function MapView({
     const format = new WKT();
     const sourceProj = srid ? `EPSG:${srid}` : `EPSG:${defaultSrid || '32651'}`;
     const targetProj = 'EPSG:3857';
+    const numericValue = '[+-]?(?:\\d+(?:\\.\\d*)?|\\.\\d+)(?:[eE][+-]?\\d+)?';
+    const normalizeWkt = (wkt) => {
+      const coordinate = new RegExp(
+        `(${numericValue})\\s+(${numericValue})(?:\\s+${numericValue})+`,
+        'g'
+      );
+      return wkt.replace(coordinate, '$1 $2');
+    };
 
     return records
       .map((item) => {
         if (!item.WKT) return null;
         try {
-          const geom = format.readGeometry(item.WKT, {
+          const geom = format.readGeometry(normalizeWkt(item.WKT), {
             dataProjection: sourceProj,
             featureProjection: targetProj
           });
