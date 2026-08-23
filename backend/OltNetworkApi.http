@@ -1,0 +1,6 @@
+@OltNetworkApi_HostAddress = http://localhost:5293
+
+GET {{OltNetworkApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

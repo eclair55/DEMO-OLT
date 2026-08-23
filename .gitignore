@@ -1,0 +1,22 @@
+# .NET build output
+**/bin/
+**/obj/
+bin/
+obj/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node dependencies & build
+node_modules/
+frontend/node_modules/
+dist/
+.vite/
+
+# Python / verification
+__pycache__/
+/verification/
+
+# Logs
+*.log
+/tmp/
