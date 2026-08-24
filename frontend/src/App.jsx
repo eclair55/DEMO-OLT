@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import MapView from './components/MapView';
 import OltNodeModal from './components/OltNodeModal';
 import SidePanel from './components/SidePanel';
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function App() {
+  const mapViewRef = useRef(null);
   // Config state
   const [srid, setSrid] = useState('32651');
 
@@ -28,6 +29,7 @@ export default function App() {
   const [selectedLcpId, setSelectedLcpId] = useState(null);
 
   const [naps, setNaps] = useState([]);
+  const [selectedNapId, setSelectedNapId] = useState(null);
 
   // UI state
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -83,6 +85,7 @@ export default function App() {
     setLcps([]);
     setSelectedLcpId(null);
     setNaps([]);
+    setSelectedNapId(null);
 
     setLoadingMsg(`Loading OLT Nodes for ${oltCode}...`);
     setErrorMsg(null);
@@ -110,6 +113,7 @@ export default function App() {
     setLcps([]);
     setSelectedLcpId(null);
     setNaps([]);
+    setSelectedNapId(null);
 
     setLoadingMsg(`Loading Parent Slots for ${oltNode}...`);
     setErrorMsg(null);
@@ -131,6 +135,7 @@ export default function App() {
     setLcps([]);
     setSelectedLcpId(null);
     setNaps([]);
+    setSelectedNapId(null);
 
     setLoadingMsg(`Loading LCPs for ${selectedOltNode} (Slot ${slotNumber})...`);
     setErrorMsg(null);
@@ -152,6 +157,7 @@ export default function App() {
   const handleLcpClick = async (odnContId) => {
     setSelectedLcpId(odnContId);
     setNaps([]);
+    setSelectedNapId(null);
 
     setLoadingMsg(`Loading connected NAPs for LCP ${odnContId}...`);
     setErrorMsg(null);
@@ -167,6 +173,11 @@ export default function App() {
     }
   };
 
+  const handleNapClick = (napId) => {
+    setSelectedNapId(napId);
+    mapViewRef.current?.zoomToNap(napId);
+  };
+
   // Reset entire selection hierarchy
   const handleReset = () => {
     setSelectedOltCode(null);
@@ -178,6 +189,7 @@ export default function App() {
     setLcps([]);
     setSelectedLcpId(null);
     setNaps([]);
+    setSelectedNapId(null);
     setErrorMsg(null);
   };
 
@@ -249,14 +261,17 @@ export default function App() {
 
         {/* Map View */}
         <MapView
+          ref={mapViewRef}
           olts={olts}
           lcps={lcps}
           naps={naps}
           srid={srid}
           selectedOltCode={selectedOltCode}
           selectedLcpId={selectedLcpId}
+          selectedNapId={selectedNapId}
           onOltClick={handleOltClick}
           onLcpClick={handleLcpClick}
+          onNapClick={handleNapClick}
         />
 
         {/* Legend */}
@@ -287,9 +302,15 @@ export default function App() {
           selectedOltCode={selectedOltCode}
           selectedOltNode={selectedOltNode}
           parentSlots={decoratedSlots}
+          lcps={lcps}
+          naps={naps}
           selectedSlot={selectedSlot}
           selectedLcpId={selectedLcpId}
-          napsCount={naps.length}
+          selectedNapId={selectedNapId}
+          onLcpSelect={handleLcpClick}
+          onNapSelect={handleNapClick}
+          onZoomToLcp={(lcpId) => mapViewRef.current?.zoomToLcp(lcpId)}
+          onZoomToNap={(napId) => mapViewRef.current?.zoomToNap(napId)}
         />
       </main>
 

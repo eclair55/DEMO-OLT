@@ -141,6 +141,21 @@ body {
   position: relative;
 }
 
+.zoom-level {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  padding: 0.35rem 0.6rem;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  color: #334155;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+}
+
 /* Legend Overlay */
 .map-legend {
   position: absolute;
@@ -302,6 +317,90 @@ body {
   border-radius: 4px;
   background: #e2e8f0;
   color: #475569;
+}
+
+.tree-branch {
+  margin-left: 0.75rem;
+  padding-left: 0.75rem;
+  border-left: 2px solid #bae6fd;
+}
+
+.lcp-branch {
+  margin-top: 0.5rem;
+}
+
+.nap-branch {
+  margin: 0.35rem 0 0.35rem 0.75rem;
+  border-left-color: #fecaca;
+}
+
+.tree-item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.4rem;
+  border-radius: 4px;
+}
+
+.tree-item.active {
+  background: #ecfdf5;
+}
+
+.tree-select,
+.icon-btn {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: #047857;
+}
+
+.tree-select {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem;
+  text-align: left;
+  font-size: 0.78rem;
+  color: #064e3b;
+}
+
+.tree-select span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-select:hover,
+.icon-btn:hover {
+  color: #065f46;
+}
+
+.icon-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 0.25rem;
+}
+
+.nap-item {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.nap-item .tree-select,
+.nap-item .icon-btn {
+  color: #b91c1c;
+}
+
+.tree-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.25rem;
+  color: #64748b;
+  font-size: 0.75rem;
 }
 
 /* Modal Dialog */

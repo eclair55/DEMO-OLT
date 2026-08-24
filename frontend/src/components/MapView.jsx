@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -9,27 +9,58 @@ import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import Overlay from 'ol/Overlay';
 import WKT from 'ol/format/WKT';
+import { getCenter } from 'ol/extent';
 import { Style, Circle, Fill, Stroke, Text, RegularShape } from 'ol/style';
 import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
 
-export default function MapView({
+const MapView = forwardRef(function MapView({
   olts,
   lcps,
   naps,
   srid,
   selectedOltCode,
   selectedLcpId,
+  selectedNapId,
   onOltClick,
-  onLcpClick
-}) {
+  onLcpClick,
+  onNapClick
+}, ref) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const [zoomLevel, setZoomLevel] = useState(11);
   const oltSourceRef = useRef(new VectorSource());
   const lcpSourceRef = useRef(new VectorSource());
   const napSourceRef = useRef(new VectorSource());
   const overlayRef = useRef(null);
   const popupElementRef = useRef(null);
+
+  const zoomToFeature = (source, property, value, maxZoom) => {
+    const feature = source.getFeatures().find((item) => item.get(property) === value);
+    if (!feature || !mapInstanceRef.current) return;
+
+    mapInstanceRef.current.getView().fit(feature.getGeometry().getExtent(), {
+      padding: [120, 120, 120, 120],
+      maxZoom,
+      duration: 600
+    });
+  };
+
+  useImperativeHandle(ref, () => ({
+    zoomToLcp: (lcpId) => zoomToFeature(lcpSourceRef.current, 'ODNC_ODN_CONT_ID', lcpId, 16),
+    zoomToNap: (napId) => {
+      const feature = napSourceRef.current.getFeatures().find(
+        (item) => item.get('ODNC_ODN_CONT_ID') === napId || item.get('NAP_ID') === napId
+      );
+      if (!feature || !mapInstanceRef.current) return;
+
+      mapInstanceRef.current.getView().animate({
+        center: getCenter(feature.getGeometry().getExtent()),
+        zoom: 17,
+        duration: 600
+      });
+    }
+  }));
 
   // Register SRID projection dynamically
   useEffect(() => {
@@ -55,7 +86,7 @@ export default function MapView({
     // Styles
     const oltStyle = (feature) => {
       const code = feature.get('OLT_CODE');
-      const isSelected = code === selectedOltCode;
+      const isSelected = feature.get('isSelected');
       return new Style({
         image: new Circle({
           radius: isSelected ? 12 : 9,
@@ -77,7 +108,7 @@ export default function MapView({
 
     const lcpStyle = (feature) => {
       const id = feature.get('ODNC_ODN_CONT_ID');
-      const isSelected = id === selectedLcpId;
+      const isSelected = feature.get('isSelected');
       const isPoint = feature.getGeometry()?.getType() === 'Point';
       return new Style({
         image: isPoint
@@ -112,11 +143,12 @@ export default function MapView({
 
     const napStyle = (feature) => {
       const napId = feature.get('ODNC_ODN_CONT_ID') || feature.get('NAP_ID') || 'NAP';
+      const isSelected = feature.get('isSelected');
       return new Style({
         image: new Circle({
-          radius: 6,
-          fill: new Fill({ color: '#dc2626' }),
-          stroke: new Stroke({ color: '#ffffff', width: 1.5 })
+          radius: isSelected ? 9 : 6,
+          fill: new Fill({ color: isSelected ? '#991b1b' : '#dc2626' }),
+          stroke: new Stroke({ color: '#ffffff', width: isSelected ? 3 : 1.5 })
         }),
         text: new Text({
           text: napId,
@@ -182,6 +214,9 @@ export default function MapView({
         if (oltCode && onOltClick) {
           featureFound = true;
           onOltClick(oltCode);
+        } else if (layer === napLayer && odnContId && onNapClick) {
+          featureFound = true;
+          onNapClick(odnContId);
         } else if (odnContId && onLcpClick) {
           featureFound = true;
           onLcpClick(odnContId);
@@ -218,7 +253,22 @@ export default function MapView({
     });
 
     mapInstanceRef.current = map;
+    const updateZoomLevel = () => setZoomLevel(Math.round(map.getView().getZoom() ?? 0));
+    map.getView().on('change:resolution', updateZoomLevel);
+    updateZoomLevel();
   }, []);
+
+  useEffect(() => {
+    oltSourceRef.current.getFeatures().forEach((feature) => {
+      feature.set('isSelected', feature.get('OLT_CODE') === selectedOltCode);
+    });
+    lcpSourceRef.current.getFeatures().forEach((feature) => {
+      feature.set('isSelected', feature.get('ODNC_ODN_CONT_ID') === selectedLcpId);
+    });
+    napSourceRef.current.getFeatures().forEach((feature) => {
+      feature.set('isSelected', feature.get('ODNC_ODN_CONT_ID') === selectedNapId || feature.get('NAP_ID') === selectedNapId);
+    });
+  }, [selectedOltCode, selectedLcpId, selectedNapId]);
 
   // WKT Parser Helper
   const parseWktFeatures = (records, defaultSrid) => {
@@ -262,6 +312,7 @@ export default function MapView({
 
     const features = parseWktFeatures(olts, '32651');
     if (features.length > 0) {
+      features.forEach((feature) => feature.set('isSelected', feature.get('OLT_CODE') === selectedOltCode));
       oltSourceRef.current.addFeatures(features);
       const extent = oltSourceRef.current.getExtent();
       mapInstanceRef.current.getView().fit(extent, {
@@ -279,6 +330,7 @@ export default function MapView({
 
     const features = parseWktFeatures(lcps, '32651');
     if (features.length > 0) {
+      features.forEach((feature) => feature.set('isSelected', feature.get('ODNC_ODN_CONT_ID') === selectedLcpId));
       lcpSourceRef.current.addFeatures(features);
       const extent = lcpSourceRef.current.getExtent();
       mapInstanceRef.current.getView().fit(extent, {
@@ -296,6 +348,7 @@ export default function MapView({
 
     const features = parseWktFeatures(naps, '32651');
     if (features.length > 0) {
+      features.forEach((feature) => feature.set('isSelected', feature.get('ODNC_ODN_CONT_ID') === selectedNapId || feature.get('NAP_ID') === selectedNapId));
       napSourceRef.current.addFeatures(features);
       const extent = napSourceRef.current.getExtent();
       mapInstanceRef.current.getView().fit(extent, {
@@ -309,7 +362,12 @@ export default function MapView({
   return (
     <div className="map-container">
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+      <div className="zoom-level" aria-live="polite">
+        Zoom {zoomLevel}
+      </div>
       <div ref={popupElementRef} className="ol-popup" />
     </div>
   );
-}
+});
+
+export default MapView;
