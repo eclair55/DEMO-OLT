@@ -30,6 +30,9 @@ export default function App() {
 
   const [naps, setNaps] = useState([]);
   const [selectedNapId, setSelectedNapId] = useState(null);
+  const [routes, setRoutes] = useState([]);
+  const [routeStatuses, setRouteStatuses] = useState({});
+  const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
 
   // UI state
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -86,6 +89,8 @@ export default function App() {
     setSelectedLcpId(null);
     setNaps([]);
     setSelectedNapId(null);
+    setRoutes([]);
+    setRouteStatuses({});
 
     setLoadingMsg(`Loading OLT Nodes for ${oltCode}...`);
     setErrorMsg(null);
@@ -114,6 +119,8 @@ export default function App() {
     setSelectedLcpId(null);
     setNaps([]);
     setSelectedNapId(null);
+    setRoutes([]);
+    setRouteStatuses({});
 
     setLoadingMsg(`Loading Parent Slots for ${oltNode}...`);
     setErrorMsg(null);
@@ -136,6 +143,8 @@ export default function App() {
     setSelectedLcpId(null);
     setNaps([]);
     setSelectedNapId(null);
+    setRoutes([]);
+    setRouteStatuses({});
 
     setLoadingMsg(`Loading LCPs for ${selectedOltNode} (Slot ${slotNumber})...`);
     setErrorMsg(null);
@@ -158,6 +167,8 @@ export default function App() {
     setSelectedLcpId(odnContId);
     setNaps([]);
     setSelectedNapId(null);
+    setRoutes([]);
+    setRouteStatuses({});
 
     setLoadingMsg(`Loading connected NAPs for LCP ${odnContId}...`);
     setErrorMsg(null);
@@ -178,6 +189,48 @@ export default function App() {
     mapViewRef.current?.zoomToNap(napId);
   };
 
+  const getFacilityId = (record) => (
+    record.ODNC_FACILITY_ID ?? record.odnc_facility_id ?? record.FACILITY_ID ?? record.facility_id
+  );
+
+  const getNapId = (nap) => (
+    nap.ODNC_ODN_CONT_ID ?? nap.odnc_odn_cont_id ?? nap.NAP_ID ?? nap.nap_id
+  );
+
+  const handleLoadRoutes = async () => {
+    const lcp = lcps.find((item) => (
+      (item.ODNC_ODN_CONT_ID ?? item.odnc_odn_cont_id) === selectedLcpId
+    ));
+    const lcpFacilityId = lcp && getFacilityId(lcp);
+    const napsWithFacilities = naps
+      .map((nap) => ({ nap, napId: getNapId(nap), facilityId: getFacilityId(nap) }))
+      .filter((item) => item.napId && item.facilityId && lcpFacilityId);
+
+    if (!lcpFacilityId || napsWithFacilities.length === 0) return;
+
+    setRoutes([]);
+    setIsLoadingRoutes(true);
+    setRouteStatuses(Object.fromEntries(napsWithFacilities.map(({ napId }) => [napId, 'loading'])));
+
+    await Promise.all(napsWithFacilities.map(async ({ napId, facilityId }) => {
+      try {
+        const query = new URLSearchParams({
+          LCP_FACILITY_ID: String(lcpFacilityId),
+          NAP_FACILITY_ID: String(facilityId)
+        });
+        const res = await fetch(`/api/route?${query}`);
+        if (!res.ok) throw new Error('Failed to load cable route.');
+        const data = await res.json();
+        setRoutes((currentRoutes) => [...currentRoutes, ...data]);
+        setRouteStatuses((currentStatuses) => ({ ...currentStatuses, [napId]: 'loaded' }));
+      } catch {
+        setRouteStatuses((currentStatuses) => ({ ...currentStatuses, [napId]: 'error' }));
+      }
+    }));
+
+    setIsLoadingRoutes(false);
+  };
+
   // Reset entire selection hierarchy
   const handleReset = () => {
     setSelectedOltCode(null);
@@ -190,6 +243,8 @@ export default function App() {
     setSelectedLcpId(null);
     setNaps([]);
     setSelectedNapId(null);
+    setRoutes([]);
+    setRouteStatuses({});
     setErrorMsg(null);
   };
 
@@ -265,6 +320,7 @@ export default function App() {
           olts={olts}
           lcps={lcps}
           naps={naps}
+          routes={routes}
           srid={srid}
           selectedOltCode={selectedOltCode}
           selectedLcpId={selectedLcpId}
@@ -304,11 +360,14 @@ export default function App() {
           parentSlots={decoratedSlots}
           lcps={lcps}
           naps={naps}
+          routeStatuses={routeStatuses}
+          isLoadingRoutes={isLoadingRoutes}
           selectedSlot={selectedSlot}
           selectedLcpId={selectedLcpId}
           selectedNapId={selectedNapId}
           onLcpSelect={handleLcpClick}
           onNapSelect={handleNapClick}
+          onLoadRoutes={handleLoadRoutes}
           onZoomToLcp={(lcpId) => mapViewRef.current?.zoomToLcp(lcpId)}
           onZoomToNap={(napId) => mapViewRef.current?.zoomToNap(napId)}
         />

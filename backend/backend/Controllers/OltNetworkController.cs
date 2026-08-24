@@ -99,4 +99,19 @@ public class OltNetworkController : ControllerBase
             return StatusCode(500, new { message = $"Unable to load NAPs for LCP {odnContId}." });
         }
     }
+
+    [HttpGet("route")]
+    public async Task<IActionResult> GetRoute([FromQuery] string LCP_FACILITY_ID, [FromQuery] string NAP_FACILITY_ID)
+    {
+        try
+        {
+            var data = await _dbService.getRoute(LCP_FACILITY_ID, NAP_FACILITY_ID);
+            return Ok(data);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching route for LCP {LcpFacilityId} and NAP {NapFacilityId}", LCP_FACILITY_ID, NAP_FACILITY_ID);
+            return StatusCode(500, new { message = $"Unable to load route for LCP {LCP_FACILITY_ID} and NAP {NAP_FACILITY_ID}." });
+        }
+    }
 }

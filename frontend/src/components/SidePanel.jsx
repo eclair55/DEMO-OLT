@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye } from 'lucide-react';
+import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye, Route } from 'lucide-react';
 
 export default function SidePanel({
   selectedOltCode,
@@ -7,13 +7,16 @@ export default function SidePanel({
   parentSlots,
   lcps,
   naps,
+  routeStatuses,
+  isLoadingRoutes,
   selectedSlot,
   selectedLcpId,
   selectedNapId,
   onLcpSelect,
   onZoomToLcp,
   onZoomToNap,
-  onNapSelect
+  onNapSelect,
+  onLoadRoutes
 }) {
   return (
     <aside className="side-panel">
@@ -97,9 +100,18 @@ export default function SidePanel({
 
                             {isLcpSelected && (
                               <div className="tree-branch nap-branch">
+                                <button
+                                  className="route-load-btn"
+                                  onClick={onLoadRoutes}
+                                  disabled={isLoadingRoutes}
+                                >
+                                  <Route size={14} />
+                                  {isLoadingRoutes ? 'Loading cable routes...' : 'Load cable routes'}
+                                </button>
                                 {naps.length > 0 ? naps.map((nap, napIdx) => {
                                   const napId = nap.ODNC_ODN_CONT_ID ?? nap.odnc_odn_cont_id ?? nap.NAP_ID ?? nap.nap_id ?? `NAP ${napIdx + 1}`;
                                   const isNapSelected = selectedNapId === napId;
+                                  const routeStatus = routeStatuses[napId];
                                   return (
                                     <div className={`tree-item nap-item ${isNapSelected ? 'active' : ''}`} key={napId}>
                                       <button className="tree-select" onClick={() => onNapSelect(napId)}>
@@ -114,6 +126,14 @@ export default function SidePanel({
                                       >
                                         <LocateFixed size={13} />
                                       </button>
+                                      {routeStatus && (
+                                        <span className={`route-status ${routeStatus}`}>
+                                          <span>{routeStatus === 'loading' ? 'Loading' : routeStatus === 'loaded' ? 'Loaded' : 'Failed'}</span>
+                                          <span className="route-progress" aria-label={`${routeStatus} route`}>
+                                            <span />
+                                          </span>
+                                        </span>
+                                      )}
                                     </div>
                                   );
                                 }) : (

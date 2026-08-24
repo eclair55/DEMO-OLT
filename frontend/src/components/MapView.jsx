@@ -18,6 +18,7 @@ const MapView = forwardRef(function MapView({
   olts,
   lcps,
   naps,
+  routes,
   srid,
   selectedOltCode,
   selectedLcpId,
@@ -32,6 +33,7 @@ const MapView = forwardRef(function MapView({
   const oltSourceRef = useRef(new VectorSource());
   const lcpSourceRef = useRef(new VectorSource());
   const napSourceRef = useRef(new VectorSource());
+  const routeSourceRef = useRef(new VectorSource());
   const overlayRef = useRef(null);
   const popupElementRef = useRef(null);
 
@@ -160,6 +162,10 @@ const MapView = forwardRef(function MapView({
       });
     };
 
+    const routeStyle = new Style({
+      stroke: new Stroke({ color: '#7c3aed', width: 4 })
+    });
+
     const oltLayer = new VectorLayer({
       source: oltSourceRef.current,
       style: oltStyle,
@@ -178,6 +184,12 @@ const MapView = forwardRef(function MapView({
       zIndex: 4
     });
 
+    const routeLayer = new VectorLayer({
+      source: routeSourceRef.current,
+      style: routeStyle,
+      zIndex: 1
+    });
+
     // Create Popup Overlay
     const overlay = new Overlay({
       element: popupElementRef.current,
@@ -193,6 +205,7 @@ const MapView = forwardRef(function MapView({
           source: new OSM()
         }),
         lcpLayer,
+        routeLayer,
         oltLayer,
         napLayer
       ],
@@ -269,6 +282,13 @@ const MapView = forwardRef(function MapView({
       feature.set('isSelected', feature.get('ODNC_ODN_CONT_ID') === selectedNapId || feature.get('NAP_ID') === selectedNapId);
     });
   }, [selectedOltCode, selectedLcpId, selectedNapId]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    routeSourceRef.current.clear();
+    const features = parseWktFeatures(routes, '32651');
+    routeSourceRef.current.addFeatures(features);
+  }, [routes, srid]);
 
   // WKT Parser Helper
   const parseWktFeatures = (records, defaultSrid) => {

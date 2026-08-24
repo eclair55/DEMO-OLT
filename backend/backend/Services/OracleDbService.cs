@@ -163,6 +163,42 @@ public class OracleDbService : IOracleDbService
         }
     }
 
+
+    public async Task<IEnumerable<Dictionary<string, object?>>> getRoute(string LCP_FACILITY_ID, string NAP_FACILITY_ID)
+    {
+        if (!IsRealConnectionStringValid())
+        {
+            return null;
+        }
+
+        const string sql = @"SELECT FACILITY_ID,WKT
+                    FROM TABLE(
+                        GET_FACILITY_NETWORK_WKT_UN(
+                            'ODN_CONT_GEOM',
+                            'ODNC_FACILITY_ID',
+                            :LCP_FACILITY_ID,
+
+                            'ODN_CONT_GEOM',
+                            'ODNC_FACILITY_ID',
+                            :NAP_FACILITY_ID
+                        )
+                    ) WHERE GEOMETRY_TYPE = 'LINESTRING'";
+        var parameters = new[]
+          {
+            new OracleParameter("LCP_FACILITY_ID", LCP_FACILITY_ID),
+            new OracleParameter("NAP_FACILITY_ID", NAP_FACILITY_ID)
+        };
+
+        try
+        {
+            return await ExecuteQueryAsync(sql, parameters);
+        }
+        catch (Exception ex)
+        {
+            return null;
+        }
+    }
+
     private async Task<List<Dictionary<string, object?>>> ExecuteQueryAsync(string sql, OracleParameter[]? parameters = null)
     {
         var results = new List<Dictionary<string, object?>>();
