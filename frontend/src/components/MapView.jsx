@@ -126,13 +126,6 @@ const MapView = forwardRef(function MapView({
               })
             })
           : undefined,
-        stroke: new Stroke({
-          color: isSelected ? '#047857' : '#059669',
-          width: isSelected ? 6 : 4
-        }),
-        fill: new Fill({
-          color: isSelected ? 'rgba(5, 150, 105, 0.3)' : 'rgba(5, 150, 105, 0.15)'
-        }),
         text: new Text({
           text: id || '',
           offsetY: isPoint ? -20 : 0,
@@ -146,16 +139,24 @@ const MapView = forwardRef(function MapView({
     const napStyle = (feature) => {
       const napId = feature.get('ODNC_ODN_CONT_ID') || feature.get('NAP_ID') || 'NAP';
       const isSelected = feature.get('isSelected');
+      const utilization = Number(feature.get('UTILIZATION') ?? feature.get('utilization'));
+      const utilizationColor = utilization >= 100
+        ? '#dc2626'
+        : utilization >= 50
+          ? '#eab308'
+          : utilization >= 0
+            ? '#16a34a'
+            : '#64748b';
       return new Style({
         image: new Circle({
           radius: isSelected ? 9 : 6,
-          fill: new Fill({ color: isSelected ? '#991b1b' : '#dc2626' }),
-          stroke: new Stroke({ color: '#ffffff', width: isSelected ? 3 : 1.5 })
+          fill: new Fill({ color: utilizationColor }),
+          stroke: new Stroke({ color: isSelected ? '#0f172a' : '#ffffff', width: isSelected ? 3 : 1.5 })
         }),
         text: new Text({
           text: napId,
           offsetY: 14,
-          fill: new Fill({ color: '#991b1b' }),
+          fill: new Fill({ color: utilizationColor }),
           stroke: new Stroke({ color: '#ffffff', width: 2 }),
           font: 'bold 10px sans-serif'
         })

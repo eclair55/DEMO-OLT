@@ -342,16 +342,20 @@ export default function App() {
               <span>OLT Location</span>
             </div>
             <div className="legend-item">
-              <span className="symbol-node" />
-              <span>OLT Node</span>
-            </div>
-            <div className="legend-item">
               <span className="symbol-lcp" />
-              <span>LCP (Container)</span>
+              <span>LCP (Point)</span>
             </div>
             <div className="legend-item">
-              <span className="symbol-nap" />
-              <span>NAP (Access Point)</span>
+              <span className="symbol-nap symbol-nap-available" />
+              <span>NAP utilization 0-49%</span>
+            </div>
+            <div className="legend-item">
+              <span className="symbol-nap symbol-nap-warning" />
+              <span>NAP utilization 50-99%</span>
+            </div>
+            <div className="legend-item">
+              <span className="symbol-nap symbol-nap-full" />
+              <span>NAP utilization 100%</span>
             </div>
           </div>
         </div>

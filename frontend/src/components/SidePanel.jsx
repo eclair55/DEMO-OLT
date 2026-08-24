@@ -124,11 +124,23 @@ export default function SidePanel({
                                 {naps.length > 0 ? naps.map((nap, napIdx) => {
                                   const napId = nap.ODNC_ODN_CONT_ID ?? nap.odnc_odn_cont_id ?? nap.NAP_ID ?? nap.nap_id ?? `NAP ${napIdx + 1}`;
                                   const isNapSelected = selectedNapId === napId;
+                                  const utilization = Number(nap.UTILIZATION ?? nap.utilization);
+                                  const utilizationColor = utilization >= 100
+                                    ? '#dc2626'
+                                    : utilization >= 50
+                                      ? '#eab308'
+                                      : utilization >= 0
+                                        ? '#16a34a'
+                                        : '#64748b';
                                   const routeStatus = routeStatuses[napId];
                                   return (
                                     <div className={`tree-item nap-item ${isNapSelected ? 'active' : ''}`} key={napId}>
-                                      <button className="tree-select" onClick={() => onNapSelect(napId)}>
-                                        <Radio size={13} />
+                                      <button
+                                        className="tree-select"
+                                        style={{ color: utilizationColor }}
+                                        onClick={() => onNapSelect(napId)}
+                                      >
+                                        <Radio size={13} color={utilizationColor} />
                                         <span>{napId}</span>
                                       </button>
                                       <button

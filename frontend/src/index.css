@@ -241,10 +241,11 @@ body {
 }
 
 .symbol-lcp {
-  width: 18px;
-  height: 4px;
-  background-color: #059669;
-  border-radius: 2px;
+  width: 14px;
+  height: 13px;
+  background-color: #facc15;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 0.5px #a16207);
 }
 
 .symbol-nap {
@@ -254,6 +255,10 @@ body {
   background-color: #dc2626;
   border: 1px solid #ffffff;
 }
+
+.symbol-nap-available { background-color: #16a34a; }
+.symbol-nap-warning { background-color: #eab308; }
+.symbol-nap-full { background-color: #dc2626; }
 
 /* Side Info Panel */
 .side-panel {
