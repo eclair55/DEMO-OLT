@@ -370,6 +370,8 @@ export default function App() {
           isVisible={isSidePanelVisible}
           selectedOltCode={selectedOltCode}
           selectedOltNode={selectedOltNode}
+          nodes={nodes}
+          onSelectNode={handleSelectNode}
           parentSlots={decoratedSlots}
           lcps={lcps}
           naps={naps}

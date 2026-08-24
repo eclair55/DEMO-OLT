@@ -5,6 +5,8 @@ export default function SidePanel({
   isVisible,
   selectedOltCode,
   selectedOltNode,
+  nodes,
+  onSelectNode,
   parentSlots,
   lcps,
   naps,
@@ -48,7 +50,17 @@ export default function SidePanel({
           </div>
           <div className="info-grid">
             <span className="info-label">Node ID:</span>
-            <span className="info-value">{selectedOltNode}</span>
+            <select
+              className="node-select"
+              value={selectedOltNode}
+              onChange={(event) => onSelectNode(event.target.value)}
+              aria-label="Select OLT node"
+            >
+              {(nodes || []).map((node, idx) => {
+                const nodeValue = node.OLT_NODE || node.olt_node || Object.values(node)[0];
+                return <option key={`${nodeValue}-${idx}`} value={nodeValue}>{nodeValue}</option>;
+              })}
+            </select>
           </div>
         </div>
       )}
