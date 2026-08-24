@@ -141,6 +141,35 @@ body {
   position: relative;
 }
 
+.side-panel-toggle {
+  position: absolute;
+  top: 10px;
+  right: 330px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+  transition: right 0.3s ease, background 0.2s, color 0.2s;
+}
+
+.side-panel-toggle:hover {
+  background: #f0f9ff;
+  color: #0369a1;
+}
+
+.side-panel-toggle.closed {
+  top: 52px;
+  right: 10px;
+}
+
 .zoom-level {
   position: absolute;
   top: 10px;
@@ -238,6 +267,18 @@ body {
   overflow-y: auto;
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.03);
   z-index: 5;
+  transition: width 0.3s ease, padding 0.3s ease, opacity 0.25s ease, transform 0.3s ease;
+}
+
+.side-panel.hidden {
+  width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-left-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(24px);
+  pointer-events: none;
 }
 
 .panel-section {

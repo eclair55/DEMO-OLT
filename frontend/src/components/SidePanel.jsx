@@ -2,6 +2,7 @@ import React from 'react';
 import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye, Route } from 'lucide-react';
 
 export default function SidePanel({
+  isVisible,
   selectedOltCode,
   selectedOltNode,
   parentSlots,
@@ -19,7 +20,7 @@ export default function SidePanel({
   onLoadRoutes
 }) {
   return (
-    <aside className="side-panel">
+    <aside className={`side-panel ${isVisible ? 'visible' : 'hidden'}`}>
       {/* Selected OLT Section */}
       <div className="panel-section">
         <div className="panel-section-title">

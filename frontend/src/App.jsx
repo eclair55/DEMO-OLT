@@ -6,7 +6,9 @@ import {
   Network,
   ChevronRight,
   RotateCcw,
-  AlertTriangle
+  AlertTriangle,
+  PanelRightClose,
+  PanelRightOpen
 } from 'lucide-react';
 
 export default function App() {
@@ -37,6 +39,7 @@ export default function App() {
   // UI state
   const [loadingMsg, setLoadingMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
+  const [isSidePanelVisible, setIsSidePanelVisible] = useState(true);
 
   // Expose global test hook for reliable Playwright testing
   useEffect(() => {
@@ -353,8 +356,18 @@ export default function App() {
           </div>
         </div>
 
-        {/* Side Information Panel */}
+        <button
+          className={`side-panel-toggle ${isSidePanelVisible ? '' : 'closed'}`}
+          type="button"
+          onClick={() => setIsSidePanelVisible((visible) => !visible)}
+          aria-label={isSidePanelVisible ? 'Hide side panel' : 'Show side panel'}
+          title={isSidePanelVisible ? 'Hide side panel' : 'Show side panel'}
+        >
+          {isSidePanelVisible ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
+        </button>
+
         <SidePanel
+          isVisible={isSidePanelVisible}
           selectedOltCode={selectedOltCode}
           selectedOltNode={selectedOltNode}
           parentSlots={decoratedSlots}
