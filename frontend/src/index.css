@@ -144,7 +144,7 @@ body {
 .side-panel-toggle {
   position: absolute;
   top: 52px;
-  right: 330px;
+  right: 410px;
   z-index: 20;
   display: inline-flex;
   align-items: center;
@@ -199,6 +199,17 @@ body {
   border: 1px solid #e2e8f0;
 }
 
+.map-legend.collapsed {
+  padding: 0.55rem 0.7rem;
+}
+
+.legend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 .legend-title {
   font-size: 0.8rem;
   font-weight: 700;
@@ -206,6 +217,27 @@ body {
   color: #64748b;
   margin-bottom: 0.5rem;
   letter-spacing: 0.05em;
+}
+
+.legend-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.2rem;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.legend-toggle:hover {
+  background: #f1f5f9;
+  color: #0369a1;
+}
+
+.map-legend.collapsed .legend-title {
+  margin-bottom: 0;
 }
 
 .legend-items {
@@ -262,7 +294,7 @@ body {
 
 /* Side Info Panel */
 .side-panel {
-  width: 320px;
+  width: 400px;
   background: #ffffff;
   border-left: 1px solid #e2e8f0;
   padding: 1.25rem;
@@ -434,7 +466,8 @@ body {
 .tree-select span {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .tree-select:hover,
@@ -496,6 +529,11 @@ body {
   flex: 0 0 42px;
   font-size: 0.65rem;
   font-weight: 700;
+}
+
+.route-visibility-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .route-status.loading { color: #b45309; }

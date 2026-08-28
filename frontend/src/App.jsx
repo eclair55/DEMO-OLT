@@ -8,7 +8,9 @@ import {
   RotateCcw,
   AlertTriangle,
   PanelRightClose,
-  PanelRightOpen
+  PanelRightOpen,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function App() {
@@ -35,11 +37,13 @@ export default function App() {
   const [routes, setRoutes] = useState([]);
   const [routeStatuses, setRouteStatuses] = useState({});
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
+  const [routeVisibility, setRouteVisibility] = useState({});
 
   // UI state
   const [loadingMsg, setLoadingMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState(null);
   const [isSidePanelVisible, setIsSidePanelVisible] = useState(true);
+  const [isLegendVisible, setIsLegendVisible] = useState(true);
 
   // Expose global test hook for reliable Playwright testing
   useEffect(() => {
@@ -94,6 +98,7 @@ export default function App() {
     setSelectedNapId(null);
     setRoutes([]);
     setRouteStatuses({});
+    setRouteVisibility({});
 
     setLoadingMsg(`Loading OLT Nodes for ${oltCode}...`);
     setErrorMsg(null);
@@ -124,6 +129,7 @@ export default function App() {
     setSelectedNapId(null);
     setRoutes([]);
     setRouteStatuses({});
+    setRouteVisibility({});
 
     setLoadingMsg(`Loading Parent Slots for ${oltNode}...`);
     setErrorMsg(null);
@@ -148,6 +154,7 @@ export default function App() {
     setSelectedNapId(null);
     setRoutes([]);
     setRouteStatuses({});
+    setRouteVisibility({});
 
     setLoadingMsg(`Loading LCPs for ${selectedOltNode} (Slot ${slotNumber})...`);
     setErrorMsg(null);
@@ -172,6 +179,7 @@ export default function App() {
     setSelectedNapId(null);
     setRoutes([]);
     setRouteStatuses({});
+    setRouteVisibility({});
 
     setLoadingMsg(`Loading connected NAPs for LCP ${odnContId}...`);
     setErrorMsg(null);
@@ -214,6 +222,7 @@ export default function App() {
     setRoutes([]);
     setIsLoadingRoutes(true);
     setRouteStatuses(Object.fromEntries(napsWithFacilities.map(({ napId }) => [napId, 'loading'])));
+    setRouteVisibility(Object.fromEntries(napsWithFacilities.map(({ napId }) => [napId, true])));
 
     await Promise.all(napsWithFacilities.map(async ({ napId, facilityId }) => {
       try {
@@ -224,7 +233,10 @@ export default function App() {
         const res = await fetch(`/api/route?${query}`);
         if (!res.ok) throw new Error('Failed to load cable route.');
         const data = await res.json();
-        setRoutes((currentRoutes) => [...currentRoutes, ...data]);
+        setRoutes((currentRoutes) => [
+          ...currentRoutes,
+          ...data.map((route) => ({ ...route, routeNapId: napId }))
+        ]);
         setRouteStatuses((currentStatuses) => ({ ...currentStatuses, [napId]: 'loaded' }));
       } catch {
         setRouteStatuses((currentStatuses) => ({ ...currentStatuses, [napId]: 'error' }));
@@ -248,6 +260,7 @@ export default function App() {
     setSelectedNapId(null);
     setRoutes([]);
     setRouteStatuses({});
+    setRouteVisibility({});
     setErrorMsg(null);
   };
 
@@ -323,7 +336,7 @@ export default function App() {
           olts={olts}
           lcps={lcps}
           naps={naps}
-          routes={routes}
+          routes={routes.filter((route) => route.routeNapId && routeVisibility[route.routeNapId] !== false)}
           srid={srid}
           selectedOltCode={selectedOltCode}
           selectedLcpId={selectedLcpId}
@@ -334,9 +347,20 @@ export default function App() {
         />
 
         {/* Legend */}
-        <div className="map-legend">
-          <div className="legend-title">Map Legend</div>
-          <div className="legend-items">
+        <div className={`map-legend ${isLegendVisible ? '' : 'collapsed'}`}>
+          <div className="legend-header">
+            <div className="legend-title">Map Legend</div>
+            <button
+              className="legend-toggle"
+              type="button"
+              onClick={() => setIsLegendVisible((visible) => !visible)}
+              aria-label={isLegendVisible ? 'Hide map legend' : 'Show map legend'}
+              title={isLegendVisible ? 'Hide map legend' : 'Show map legend'}
+            >
+              {isLegendVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+          {isLegendVisible && <div className="legend-items">
             <div className="legend-item">
               <span className="symbol-olt" />
               <span>OLT Location</span>
@@ -357,7 +381,7 @@ export default function App() {
               <span className="symbol-nap symbol-nap-full" />
               <span>NAP utilization 100%</span>
             </div>
-          </div>
+          </div>}
         </div>
 
         <button
@@ -387,6 +411,11 @@ export default function App() {
           onLcpSelect={handleLcpClick}
           onNapSelect={handleNapClick}
           onLoadRoutes={handleLoadRoutes}
+          routeVisibility={routeVisibility}
+          onToggleRoute={(napId) => setRouteVisibility((current) => ({
+            ...current,
+            [napId]: current[napId] === false
+          }))}
           onZoomToLcp={(lcpId) => mapViewRef.current?.zoomToLcp(lcpId)}
           onZoomToNap={(napId) => mapViewRef.current?.zoomToNap(napId)}
         />

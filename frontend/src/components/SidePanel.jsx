@@ -1,5 +1,5 @@
 import React from 'react';
-import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye, Route } from 'lucide-react';
+import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye, EyeOff, Route } from 'lucide-react';
 
 export default function SidePanel({
   isVisible,
@@ -19,7 +19,9 @@ export default function SidePanel({
   onZoomToLcp,
   onZoomToNap,
   onNapSelect,
-  onLoadRoutes
+  onLoadRoutes,
+  routeVisibility,
+  onToggleRoute
 }) {
   return (
     <aside className={`side-panel ${isVisible ? 'visible' : 'hidden'}`}>
@@ -70,12 +72,13 @@ export default function SidePanel({
         <div className="panel-section">
           <div className="panel-section-title">
             <Layers size={16} color="#0284c7" />
-            <span>Available Parent Slots</span>
+            <span>Card Number</span>
           </div>
           <div className="slots-list">
             {parentSlots.map((slot, idx) => {
               const slotNum = slot.SLOT_NUMBER ?? slot.slot_number ?? slot.COLUMN_VALUE ?? slot.column_value ?? (idx + 1);
-              const slotName = slot.SLOT_NAME || `Slot ${slotNum}`;
+              const rawSlotName = slot.SLOT_NAME || `Slot ${slotNum}`;
+              const slotName = rawSlotName.replace(/^SLOT\s+(\d+)$/i, 'Card $1');
               const isSelected = selectedSlot === slotNum;
 
               return (
@@ -92,6 +95,8 @@ export default function SidePanel({
                     <div className="tree-branch lcp-branch">
                       {lcps.length > 0 ? lcps.map((lcp, lcpIdx) => {
                         const lcpId = lcp.ODNC_ODN_CONT_ID ?? lcp.odnc_odn_cont_id ?? `LCP ${lcpIdx + 1}`;
+                        const slotNumber = lcp.SLOT_NUMBER ?? lcp.slot_number ?? '';
+                        const lcpLabel = `PON PORT ${slotNumber}: ${lcpId}`;
                         const isLcpSelected = selectedLcpId === lcpId;
 
                         return (
@@ -99,7 +104,7 @@ export default function SidePanel({
                             <div className={`tree-item lcp-item ${isLcpSelected ? 'active' : ''}`}>
                               <button className="tree-select" onClick={() => onLcpSelect(lcpId)}>
                                 <HardDrive size={14} />
-                                <span>{lcpId}</span>
+                                <span>{lcpLabel}</span>
                               </button>
                               <button
                                 className="icon-btn"
@@ -152,12 +157,25 @@ export default function SidePanel({
                                         <LocateFixed size={13} />
                                       </button>
                                       {routeStatus && (
-                                        <span className={`route-status ${routeStatus}`}>
-                                          <span>{routeStatus === 'loading' ? 'Loading' : routeStatus === 'loaded' ? 'Loaded' : 'Failed'}</span>
-                                          <span className="route-progress" aria-label={`${routeStatus} route`}>
-                                            <span />
+                                        <>
+                                          <span className={`route-status ${routeStatus}`}>
+                                            <span>{routeStatus === 'loading' ? 'Loading' : routeStatus === 'loaded' ? 'Loaded' : 'Failed'}</span>
+                                            <span className="route-progress" aria-label={`${routeStatus} route`}>
+                                              <span />
+                                            </span>
                                           </span>
-                                        </span>
+                                          <button
+                                            className="icon-btn route-visibility-btn"
+                                            type="button"
+                                            title={`${routeVisibility[napId] === false ? 'Show' : 'Hide'} route for ${napId}`}
+                                            aria-label={`${routeVisibility[napId] === false ? 'Show' : 'Hide'} route for ${napId}`}
+                                            aria-pressed={routeVisibility[napId] !== false}
+                                            disabled={routeStatus !== 'loaded'}
+                                            onClick={() => onToggleRoute(napId)}
+                                          >
+                                            {routeVisibility[napId] === false ? <EyeOff size={13} /> : <Eye size={13} />}
+                                          </button>
+                                        </>
                                       )}
                                     </div>
                                   );
