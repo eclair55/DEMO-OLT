@@ -10,6 +10,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true
+      },
+      '/geoserver': {
+        target: 'https://192.168.2.72',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/geoserver/, '/geoserver')
       }
     }
   },

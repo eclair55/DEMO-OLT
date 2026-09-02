@@ -11,7 +11,9 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Eye,
-  EyeOff
+  EyeOff,
+  Layers3,
+  Trash2
 } from 'lucide-react';
 
 export default function App() {
@@ -40,6 +42,13 @@ export default function App() {
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [routeVisibility, setRouteVisibility] = useState({});
   const [activeFeatureModule, setActiveFeatureModule] = useState(null);
+  const [geoserverLayers, setGeoserverLayers] = useState([]);
+  const [activeGeoServerLayers, setActiveGeoServerLayers] = useState([]);
+  const [isGeoServerPanelOpen, setIsGeoServerPanelOpen] = useState(false);
+  const [isMapToolboxOpen, setIsMapToolboxOpen] = useState(true);
+  const [isRedlineDrawing, setIsRedlineDrawing] = useState(false);
+  const [redlineVisible, setRedlineVisible] = useState(false);
+  const [redlinePolygons, setRedlinePolygons] = useState([]);
 
   const [shortestPathMode, setShortestPathMode] = useState(false);
   const [shortestPathStart, setShortestPathStart] = useState(null);
@@ -87,6 +96,36 @@ export default function App() {
 
     return () => window.clearTimeout(timer);
   }, [successMsg]);
+
+  useEffect(() => {
+    const loadGeoServerLayers = async () => {
+      try {
+        const res = await fetch('/geoserver/rest/workspaces/PPGIS/layers.json');
+        if (!res.ok) throw new Error('Failed to load GeoServer layers.');
+
+        const data = await res.json();
+        const layerList = Array.isArray(data?.layers?.layer)
+          ? data.layers.layer
+          : Array.isArray(data?.layers)
+            ? data.layers
+            : [];
+
+        const normalizedLayers = layerList
+          .map((layer) => {
+            const name = layer?.name ?? layer?.layer ?? '';
+            const title = layer?.title ?? layer?.name ?? name;
+            return name ? { name, title } : null;
+          })
+          .filter(Boolean);
+
+        setGeoserverLayers(normalizedLayers);
+      } catch (error) {
+        console.warn('Could not fetch GeoServer layers.', error);
+      }
+    };
+
+    loadGeoServerLayers();
+  }, []);
 
   // Expose global test hook for reliable Playwright testing
   useEffect(() => {
@@ -519,6 +558,23 @@ export default function App() {
     setIsSidePanelVisible(!nextModule);
   };
 
+  const handleGeoServerLayerToggle = (layerName) => {
+    setActiveGeoServerLayers((current) => (
+      current.includes(layerName)
+        ? current.filter((layer) => layer !== layerName)
+        : [...current, layerName]
+    ));
+    if (!isGeoServerPanelOpen) {
+      setIsGeoServerPanelOpen(true);
+    }
+  };
+
+  const handleRedlineDrawComplete = (polygon) => {
+    if (!polygon) return;
+    setRedlinePolygons((current) => [...current, polygon]);
+    setIsRedlineDrawing(false);
+  };
+
   // Map slots with click callback
   const decoratedSlots = parentSlots.map((slot) => ({
     ...slot,
@@ -611,6 +667,11 @@ export default function App() {
           shortestPathEnd={shortestPathEnd}
           proposedOltPinMode={proposedOltPinMode}
           proposedOltPin={proposedOltPin}
+          activeGeoServerLayers={activeGeoServerLayers}
+          redlineVisible={redlineVisible}
+          redlinePolygons={redlinePolygons}
+          isRedlineDrawing={isRedlineDrawing}
+          onRedlineDrawComplete={handleRedlineDrawComplete}
           onMapCoordinateSelect={handleMapCoordinateSelect}
           onOltClick={handleOltClick}
           onLcpClick={handleLcpClick}
@@ -619,7 +680,7 @@ export default function App() {
         />
 
         {/* Legend */}
-        <div className={`map-legend ${isLegendVisible ? '' : 'collapsed'}`}>
+        <div className={`map-legend ${isLegendVisible ? '' : 'collapsed'}`} hidden>
           <div className="legend-header">
             <div className="legend-title">Map Legend</div>
             <button
@@ -665,6 +726,88 @@ export default function App() {
         >
           {isSidePanelVisible ? <PanelRightClose size={17} /> : <PanelRightOpen size={17} />}
         </button>
+
+        <button
+          type="button"
+          className="geoserver-toggle-button"
+          onClick={() => setIsGeoServerPanelOpen((open) => !open)}
+          aria-label={isGeoServerPanelOpen ? 'Hide GeoServer layers' : 'Show GeoServer layers'}
+          title={isGeoServerPanelOpen ? 'Hide GeoServer layers' : 'Show GeoServer layers'}
+        >
+          <Layers3 size={16} />
+          <span>GeoServer</span>
+        </button>
+
+        <aside className={`geoserver-layer-panel ${isGeoServerPanelOpen ? 'open' : ''}`}>
+          <div className="geoserver-layer-header">
+            <strong>GeoServer Layers</strong>
+            <button type="button" className="geoserver-close-button" onClick={() => setIsGeoServerPanelOpen(false)}>
+              ✕
+            </button>
+          </div>
+
+          {geoserverLayers.length === 0 ? (
+            <div className="geoserver-empty-state">Loading layers...</div>
+          ) : (
+            <ul className="geoserver-layer-list">
+              {geoserverLayers.map((layer) => {
+                const isActive = activeGeoServerLayers.includes(layer.name);
+                return (
+                  <li key={layer.name} className="geoserver-layer-item">
+                    <span className="geoserver-layer-name">{layer.title}</span>
+                    <button
+                      type="button"
+                      className={`geoserver-toggle ${isActive ? 'active' : ''}`}
+                      aria-pressed={isActive}
+                      title={isActive ? 'Hide layer' : 'Show layer'}
+                      onClick={() => handleGeoServerLayerToggle(layer.name)}
+                    >
+                      {isActive ? <Eye size={15} /> : <EyeOff size={15} />}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </aside>
+
+        <div className={`map-toolbox ${isMapToolboxOpen ? 'open' : 'collapsed'}`} aria-label="Map tools">
+          {isMapToolboxOpen && (
+            <>
+              <button
+                type="button"
+                className="map-tool-button"
+                title="Clear redline"
+                onClick={() => {
+                  setRedlinePolygons([]);
+                  setRedlineVisible(true);
+                }}
+              >
+                <Trash2 size={13} />
+              </button>
+              <button
+                type="button"
+                className={`map-tool-button redline ${isRedlineDrawing ? 'active' : ''}`}
+                title={isRedlineDrawing ? 'Stop redline drawing' : 'Draw redline'}
+                onClick={() => {
+                  setRedlineVisible(true);
+                  setIsRedlineDrawing((value) => !value);
+                }}
+              >
+                RL
+              </button>
+            </>
+          )}
+
+          <button
+            type="button"
+            className="map-toolbox-toggle"
+            title={isMapToolboxOpen ? 'Collapse tools' : 'Expand tools'}
+            onClick={() => setIsMapToolboxOpen((value) => !value)}
+          >
+            {isMapToolboxOpen ? '×' : '+'}
+          </button>
+        </div>
 
         <SidePanel
           isVisible={isSidePanelVisible}

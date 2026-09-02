@@ -8,8 +8,10 @@ import VectorSource from 'ol/source/Vector';
 import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import Overlay from 'ol/Overlay';
+import TileWMS from 'ol/source/TileWMS';
+import { Draw } from 'ol/interaction';
 import WKT from 'ol/format/WKT';
-import { Point } from 'ol/geom';
+import { Point, Polygon } from 'ol/geom';
 import { getCenter } from 'ol/extent';
 import { transform } from 'ol/proj';
 import { Style, Circle, Fill, Stroke, Text, RegularShape } from 'ol/style';
@@ -30,6 +32,11 @@ const MapView = forwardRef(function MapView({
   shortestPathEnd,
   proposedOltPinMode,
   proposedOltPin,
+  activeGeoServerLayers,
+  redlineVisible,
+  redlinePolygons,
+  isRedlineDrawing,
+  onRedlineDrawComplete,
   onMapCoordinateSelect,
   onOltClick,
   onLcpClick,
@@ -45,6 +52,9 @@ const MapView = forwardRef(function MapView({
   const routeSourceRef = useRef(new VectorSource());
   const shortestPathSourceRef = useRef(new VectorSource());
   const proposedOltPinSourceRef = useRef(new VectorSource());
+  const redlineSourceRef = useRef(new VectorSource());
+  const geoServerLayerRefs = useRef([]);
+  const drawInteractionRef = useRef(null);
   const overlayRef = useRef(null);
   const popupElementRef = useRef(null);
   const shortestPathModeRef = useRef(shortestPathMode);
@@ -270,6 +280,17 @@ const MapView = forwardRef(function MapView({
       zIndex: 7
     });
 
+    const redlineLayer = new VectorLayer({
+      source: redlineSourceRef.current,
+      style: new Style({
+        fill: new Fill({ color: 'rgba(239, 68, 68, 0.18)' }),
+        stroke: new Stroke({ color: '#dc2626', width: 3 })
+      }),
+      zIndex: 9,
+      visible: Boolean(redlineVisible)
+    });
+    redlineLayer.set('isRedlineLayer', true);
+
     // Create Popup Overlay
     const overlay = new Overlay({
       element: popupElementRef.current,
@@ -289,7 +310,8 @@ const MapView = forwardRef(function MapView({
         oltLayer,
         napLayer,
         shortestPathPinLayer,
-        proposedOltPinLayer
+        proposedOltPinLayer,
+        redlineLayer
       ],
       overlays: [overlay],
       view: new View({
@@ -392,6 +414,17 @@ const MapView = forwardRef(function MapView({
 
   useEffect(() => {
     if (!mapInstanceRef.current) return;
+    redlineSourceRef.current.clear();
+
+    redlinePolygons.forEach((polygon) => {
+      if (polygon) {
+        redlineSourceRef.current.addFeature(new Feature({ geometry: polygon }));
+      }
+    });
+  }, [redlinePolygons]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
     shortestPathSourceRef.current.clear();
 
     const pins = [];
@@ -433,6 +466,76 @@ const MapView = forwardRef(function MapView({
     });
     proposedOltPinSourceRef.current.addFeature(pin);
   }, [proposedOltPin]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const redlineLayer = mapInstanceRef.current
+      .getLayers()
+      .getArray()
+      .find((layer) => layer.get('isRedlineLayer'));
+
+    if (redlineLayer) {
+      redlineLayer.setVisible(Boolean(redlineVisible));
+    }
+  }, [redlineVisible]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    if (drawInteractionRef.current) {
+      mapInstanceRef.current.removeInteraction(drawInteractionRef.current);
+      drawInteractionRef.current = null;
+    }
+
+    if (!isRedlineDrawing || !redlineVisible) return;
+
+    const draw = new Draw({
+      source: redlineSourceRef.current,
+      type: 'Polygon'
+    });
+
+    draw.on('drawend', (event) => {
+      const geom = event.feature.getGeometry();
+      if (geom instanceof Polygon) {
+        onRedlineDrawComplete?.(geom.clone());
+      }
+    });
+
+    mapInstanceRef.current.addInteraction(draw);
+    drawInteractionRef.current = draw;
+  }, [isRedlineDrawing, redlineVisible, onRedlineDrawComplete]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    geoServerLayerRefs.current.forEach((layer) => {
+      if (mapInstanceRef.current.getLayers().getArray().includes(layer)) {
+        mapInstanceRef.current.removeLayer(layer);
+      }
+    });
+    geoServerLayerRefs.current = [];
+
+    activeGeoServerLayers.forEach((layerName) => {
+      const layer = new TileLayer({
+        source: new TileWMS({
+          url: '/geoserver/PPGIS/wms',
+          params: {
+            LAYERS: `PPGIS:${layerName}`,
+            TILED: true,
+            FORMAT: 'image/png8'
+          },
+          serverType: 'geoserver',
+          crossOrigin: 'anonymous'
+        }),
+        zIndex: 8,
+        visible: true
+      });
+
+      layer.set('isGeoServerLayer', true);
+      mapInstanceRef.current.addLayer(layer);
+      geoServerLayerRefs.current.push(layer);
+    });
+  }, [activeGeoServerLayers]);
 
   // WKT Parser Helper
   const parseWktFeatures = (records, defaultSrid) => {
