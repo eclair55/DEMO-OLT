@@ -239,12 +239,22 @@ export default function App() {
   };
 
   const handleProposedOltPinSelect = ({ longitude, latitude }) => {
+    const normalizedLongitude = Number(longitude);
+    const normalizedLatitude = Number(latitude);
+
+    if (!Number.isFinite(normalizedLongitude) || !Number.isFinite(normalizedLatitude)) {
+      return;
+    }
+
     setProposedOlt((current) => ({
       ...current,
-      Longitude: Number(longitude).toFixed(6),
-      Latitude: Number(latitude).toFixed(6)
+      Longitude: normalizedLongitude.toFixed(6),
+      Latitude: normalizedLatitude.toFixed(6)
     }));
-    setProposedOltPin({ longitude, latitude });
+    setProposedOltPin({
+      longitude: normalizedLongitude,
+      latitude: normalizedLatitude
+    });
     setProposedOltPinMode(false);
   };
 
@@ -345,7 +355,6 @@ export default function App() {
 
   const handleMapCoordinateSelect = ({ x, y }) => {
     if (proposedOltPinMode) {
-      handleProposedOltPinSelect({ longitude: x, latitude: y });
       return;
     }
 

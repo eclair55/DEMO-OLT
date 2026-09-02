@@ -299,7 +299,12 @@ const MapView = forwardRef(function MapView({
     map.on('singleclick', (evt) => {
       if (proposedOltPinModeRef.current && onProposedOltPinSelectRef.current) {
         const [longitude, latitude] = transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
-        onProposedOltPinSelectRef.current({ longitude, latitude });
+        const normalizedLongitude = Number(longitude.toFixed(6));
+        const normalizedLatitude = Number(latitude.toFixed(6));
+        onProposedOltPinSelectRef.current({
+          longitude: normalizedLongitude,
+          latitude: normalizedLatitude
+        });
         return;
       }
 

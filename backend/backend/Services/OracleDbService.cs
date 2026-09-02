@@ -326,7 +326,7 @@ public class OracleDbService : IOracleDbService
                 :TECHNOLOGY,
                 :OLT_LOCATION_TYPE,
                 :OLT_NAME,
-                SDO_GEOMETRY(3001, 32651, SDO_POINT_TYPE(:X, :Y, NULL), NULL, NULL),
+                SDO_GEOMETRY(3001, 32651, SDO_POINT_TYPE(:X, :Y, 0), NULL, NULL),
                 :LAT,
                 :LON
             )";
