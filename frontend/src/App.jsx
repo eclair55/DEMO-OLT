@@ -130,6 +130,8 @@ export default function App() {
   // 2. Click OLT -> Load OLT Nodes -> Open Modal
   const handleOltClick = async (oltCode) => {
     setSelectedOltCode(oltCode);
+    setActiveFeatureModule(null);
+    setIsSidePanelVisible(true);
     // Reset lower hierarchy
     setNodes([]);
     setSelectedOltNode(null);
@@ -493,6 +495,8 @@ export default function App() {
   // Reset entire selection hierarchy
   const handleReset = () => {
     setSelectedOltCode(null);
+    setActiveFeatureModule(null);
+    setIsSidePanelVisible(true);
     setNodes([]);
     setIsNodeModalOpen(false);
     setSelectedOltNode(null);
@@ -507,6 +511,12 @@ export default function App() {
     setRouteVisibility({});
     resetShortestPathSelection();
     setErrorMsg(null);
+  };
+
+  const handleFeatureModuleToggle = (moduleName) => {
+    const nextModule = activeFeatureModule === moduleName ? null : moduleName;
+    setActiveFeatureModule(nextModule);
+    setIsSidePanelVisible(!nextModule);
   };
 
   // Map slots with click callback
@@ -687,14 +697,14 @@ export default function App() {
             <button
               type="button"
               className={`feature-module-tab ${activeFeatureModule === 'shortest-path' ? 'active' : ''}`}
-              onClick={() => setActiveFeatureModule((current) => current === 'shortest-path' ? null : 'shortest-path')}
+              onClick={() => handleFeatureModuleToggle('shortest-path')}
             >
               Shortest Path
             </button>
             <button
               type="button"
               className={`feature-module-tab ${activeFeatureModule === 'proposed-olt' ? 'active' : ''}`}
-              onClick={() => setActiveFeatureModule((current) => current === 'proposed-olt' ? null : 'proposed-olt')}
+              onClick={() => handleFeatureModuleToggle('proposed-olt')}
             >
               Proposed OLT
             </button>

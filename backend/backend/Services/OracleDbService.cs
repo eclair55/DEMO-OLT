@@ -76,7 +76,8 @@ public class OracleDbService : IOracleDbService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to execute GetOlts query. Falling back to mock data.");
-            return GetMockOlts();
+            //return GetMockOlts();
+            throw;
         }
     }
 
