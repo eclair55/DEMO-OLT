@@ -91,16 +91,17 @@ public class OracleDbService : IOracleDbService
         const string sql = "SELECT * FROM TABLE(GET_OLT_BY_CODE(:oltCode))";
         var parameters = new[] { new OracleParameter("oltCode", oltCode) };
 
-        try
-        {
+        //try
+        //{
             var results = await ExecuteQueryAsync(sql, parameters);
             return results.Any() ? results : GetMockOltNodes(oltCode);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed GET_OLT_BY_CODE for {OltCode}. Falling back to mock data.", oltCode);
-            return GetMockOltNodes(oltCode);
-        }
+        //}
+        //catch (Exception ex)
+        //{
+        //    _logger.LogError(ex, "Failed GET_OLT_BY_CODE for {OltCode}. Falling back to mock data.", oltCode);
+        //    //return GetMockOltNodes(oltCode);
+        //    return null;
+        //}
     }
 
     public async Task<IEnumerable<Dictionary<string, object?>>> GetParentSlotsByNodeAsync(string oltNode)
@@ -114,16 +115,16 @@ public class OracleDbService : IOracleDbService
         const string sql = "SELECT * FROM TABLE(GET_PARENT_SLOTS(:oltNode))";
         var parameters = new[] { new OracleParameter("oltNode", oltNode) };
 
-        try
-        {
+        //try
+        //{
             var results = await ExecuteQueryAsync(sql, parameters);
             return results.Any() ? results : GetMockParentSlots(oltNode);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed GET_PARENT_SLOTS for {OltNode}. Falling back to mock data.", oltNode);
-            return GetMockParentSlots(oltNode);
-        }
+        //}
+        //catch (Exception ex)
+        //{
+        //    _logger.LogError(ex, "Failed GET_PARENT_SLOTS for {OltNode}. Falling back to mock data.", oltNode);
+        //    return GetMockParentSlots(oltNode);
+        //}
     }
 
     public async Task<IEnumerable<Dictionary<string, object?>>> GetLcpBySlotAsync(string oltNode, int slotNumber)
@@ -141,39 +142,39 @@ public class OracleDbService : IOracleDbService
             new OracleParameter("slotNumber", slotNumber)
         };
 
-        try
-        {
+        //try
+        //{
             var results = await ExecuteQueryAsync(sql, parameters);
             return results.Any() ? results : GetMockLcps(oltNode, slotNumber);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed GET_ODN_CONT_BY_SLOT for {OltNode}, slot {Slot}. Falling back to mock data.", oltNode, slotNumber);
-            return GetMockLcps(oltNode, slotNumber);
-        }
+        //}
+        //catch (Exception ex)
+        //{
+        //    _logger.LogError(ex, "Failed GET_ODN_CONT_BY_SLOT for {OltNode}, slot {Slot}. Falling back to mock data.", oltNode, slotNumber);
+        //    return GetMockLcps(oltNode, slotNumber);
+        //}
     }
 
     public async Task<IEnumerable<Dictionary<string, object?>>> GetNapsByLcpIdAsync(string odnContId)
     {
-        if (!IsRealConnectionStringValid())
-        {
-            _logger.LogInformation("Oracle connection string not configured. Returning mock NAPs for LCP {OdnContId}.", odnContId);
-            return GetMockNaps(odnContId);
-        }
+        //if (!IsRealConnectionStringValid())
+        //{
+        //    _logger.LogInformation("Oracle connection string not configured. Returning mock NAPs for LCP {OdnContId}.", odnContId);
+        //    return GetMockNaps(odnContId);
+        //}
 
         const string sql = "SELECT * FROM TABLE(GET_ODN_CONT_BY_ID(:odnContId))";
         var parameters = new[] { new OracleParameter("odnContId", odnContId) };
 
-        try
-        {
+        //try
+        //{
             var results = await ExecuteQueryAsync(sql, parameters);
             return results.Any() ? results : GetMockNaps(odnContId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed GET_ODN_CONT_BY_ID for {OdnContId}. Falling back to mock data.", odnContId);
-            return GetMockNaps(odnContId);
-        }
+        //}
+        //catch (Exception ex)
+        //{
+        //    _logger.LogError(ex, "Failed GET_ODN_CONT_BY_ID for {OdnContId}. Falling back to mock data.", odnContId);
+        //    return GetMockNaps(odnContId);
+        //}
     }
 
 

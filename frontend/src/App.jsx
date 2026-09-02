@@ -39,6 +39,7 @@ export default function App() {
   const [routeStatuses, setRouteStatuses] = useState({});
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [routeVisibility, setRouteVisibility] = useState({});
+  const [activeFeatureModule, setActiveFeatureModule] = useState(null);
 
   const [shortestPathMode, setShortestPathMode] = useState(false);
   const [shortestPathStart, setShortestPathStart] = useState(null);
@@ -681,103 +682,126 @@ export default function App() {
           onZoomToNap={(napId) => mapViewRef.current?.zoomToNap(napId)}
         />
 
-        <ShortestPathPanel
-          shortestPathMode={shortestPathMode}
-          shortestPathStart={shortestPathStart}
-          shortestPathEnd={shortestPathEnd}
-          maxSnapDistance={maxSnapDistance}
-          isShortestPathLoading={isShortestPathLoading}
-          onSetMaxSnapDistance={setMaxSnapDistance}
-          onStartShortestPath={handleStartShortestPath}
-          onResetShortestPath={resetShortestPathSelection}
-          onCalculateShortestPath={handleCalculateShortestPath}
-          onClearStart={handleClearShortestPathStart}
-          onClearEnd={handleClearShortestPathEnd}
-        />
-
-        <form className="proposed-olt-panel" onSubmit={handleSaveProposedOlt}>
-          <div className="proposed-olt-header">
-            <span>Proposed OLT</span>
-          </div>
-
-          <div className="proposed-olt-pin-actions">
+        <div className="feature-module-container">
+          <div className="feature-module-tabs">
             <button
               type="button"
-              className="proposed-olt-pin-toggle"
-              onClick={() => setProposedOltPinMode((value) => !value)}
+              className={`feature-module-tab ${activeFeatureModule === 'shortest-path' ? 'active' : ''}`}
+              onClick={() => setActiveFeatureModule((current) => current === 'shortest-path' ? null : 'shortest-path')}
             >
-              {proposedOltPinMode ? 'Cancel pin drop' : 'Pick location on map'}
+              Shortest Path
             </button>
-            {(proposedOltPin || proposedOlt.Longitude || proposedOlt.Latitude) && (
-              <button type="button" className="proposed-olt-pin-clear" onClick={handleClearProposedOltPin}>
-                Clear pin
+            <button
+              type="button"
+              className={`feature-module-tab ${activeFeatureModule === 'proposed-olt' ? 'active' : ''}`}
+              onClick={() => setActiveFeatureModule((current) => current === 'proposed-olt' ? null : 'proposed-olt')}
+            >
+              Proposed OLT
+            </button>
+          </div>
+
+          {activeFeatureModule === 'shortest-path' && (
+            <ShortestPathPanel
+              shortestPathMode={shortestPathMode}
+              shortestPathStart={shortestPathStart}
+              shortestPathEnd={shortestPathEnd}
+              maxSnapDistance={maxSnapDistance}
+              isShortestPathLoading={isShortestPathLoading}
+              onSetMaxSnapDistance={setMaxSnapDistance}
+              onStartShortestPath={handleStartShortestPath}
+              onResetShortestPath={resetShortestPathSelection}
+              onCalculateShortestPath={handleCalculateShortestPath}
+              onClearStart={handleClearShortestPathStart}
+              onClearEnd={handleClearShortestPathEnd}
+            />
+          )}
+
+          {activeFeatureModule === 'proposed-olt' && (
+            <form className="proposed-olt-panel" onSubmit={handleSaveProposedOlt}>
+              <div className="proposed-olt-header">
+                <span>Proposed OLT</span>
+              </div>
+
+              <div className="proposed-olt-pin-actions">
+                <button
+                  type="button"
+                  className="proposed-olt-pin-toggle"
+                  onClick={() => setProposedOltPinMode((value) => !value)}
+                >
+                  {proposedOltPinMode ? 'Cancel pin drop' : 'Pick location on map'}
+                </button>
+                {(proposedOltPin || proposedOlt.Longitude || proposedOlt.Latitude) && (
+                  <button type="button" className="proposed-olt-pin-clear" onClick={handleClearProposedOltPin}>
+                    Clear pin
+                  </button>
+                )}
+              </div>
+
+              <div className="proposed-olt-grid">
+                <label>
+                  <span>CO ID</span>
+                  <input value={proposedOlt.CO_ID} onChange={(e) => handleProposedOltChange('CO_ID', e.target.value)} />
+                </label>
+                <label>
+                  <span>CO Name</span>
+                  <input value={proposedOlt.CO_NAME} onChange={(e) => handleProposedOltChange('CO_NAME', e.target.value)} />
+                </label>
+                <label>
+                  <span>CO Owner</span>
+                  <input value={proposedOlt.CO_OWNER} onChange={(e) => handleProposedOltChange('CO_OWNER', e.target.value)} />
+                </label>
+                <label>
+                  <span>Site ID</span>
+                  <input value={proposedOlt.SITE_ID} onChange={(e) => handleProposedOltChange('SITE_ID', e.target.value)} />
+                </label>
+                <label>
+                  <span>Site Name</span>
+                  <input value={proposedOlt.SITENAME} onChange={(e) => handleProposedOltChange('SITENAME', e.target.value)} />
+                </label>
+                <label>
+                  <span>Tower Type</span>
+                  <input value={proposedOlt.TOWER_TYPE} onChange={(e) => handleProposedOltChange('TOWER_TYPE', e.target.value)} />
+                </label>
+                <label>
+                  <span>Technology</span>
+                  <input value={proposedOlt.TECHNOLOGY} onChange={(e) => handleProposedOltChange('TECHNOLOGY', e.target.value)} />
+                </label>
+                <label>
+                  <span>Location Type</span>
+                  <input value={proposedOlt.OLT_LOCATION_TYPE} onChange={(e) => handleProposedOltChange('OLT_LOCATION_TYPE', e.target.value)} />
+                </label>
+                <label className="required">
+                  <span>OLT Name</span>
+                  <input value={proposedOlt.OLT_NAME} required onChange={(e) => handleProposedOltChange('OLT_NAME', e.target.value)} />
+                </label>
+                <label className="required">
+                  <span>Longitude</span>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={proposedOlt.Longitude}
+                    readOnly
+                    required
+                  />
+                </label>
+                <label className="required">
+                  <span>Latitude</span>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={proposedOlt.Latitude}
+                    readOnly
+                    required
+                  />
+                </label>
+              </div>
+
+              <button type="submit" className="proposed-olt-submit" disabled={isSavingProposedOlt}>
+                {isSavingProposedOlt ? 'Saving...' : 'Save proposed OLT'}
               </button>
-            )}
-          </div>
-
-          <div className="proposed-olt-grid">
-            <label>
-              <span>CO ID</span>
-              <input value={proposedOlt.CO_ID} onChange={(e) => handleProposedOltChange('CO_ID', e.target.value)} />
-            </label>
-            <label>
-              <span>CO Name</span>
-              <input value={proposedOlt.CO_NAME} onChange={(e) => handleProposedOltChange('CO_NAME', e.target.value)} />
-            </label>
-            <label>
-              <span>CO Owner</span>
-              <input value={proposedOlt.CO_OWNER} onChange={(e) => handleProposedOltChange('CO_OWNER', e.target.value)} />
-            </label>
-            <label>
-              <span>Site ID</span>
-              <input value={proposedOlt.SITE_ID} onChange={(e) => handleProposedOltChange('SITE_ID', e.target.value)} />
-            </label>
-            <label>
-              <span>Site Name</span>
-              <input value={proposedOlt.SITENAME} onChange={(e) => handleProposedOltChange('SITENAME', e.target.value)} />
-            </label>
-            <label>
-              <span>Tower Type</span>
-              <input value={proposedOlt.TOWER_TYPE} onChange={(e) => handleProposedOltChange('TOWER_TYPE', e.target.value)} />
-            </label>
-            <label>
-              <span>Technology</span>
-              <input value={proposedOlt.TECHNOLOGY} onChange={(e) => handleProposedOltChange('TECHNOLOGY', e.target.value)} />
-            </label>
-            <label>
-              <span>Location Type</span>
-              <input value={proposedOlt.OLT_LOCATION_TYPE} onChange={(e) => handleProposedOltChange('OLT_LOCATION_TYPE', e.target.value)} />
-            </label>
-            <label className="required">
-              <span>OLT Name</span>
-              <input value={proposedOlt.OLT_NAME} required onChange={(e) => handleProposedOltChange('OLT_NAME', e.target.value)} />
-            </label>
-            <label className="required">
-              <span>Longitude</span>
-              <input
-                type="number"
-                step="0.000001"
-                value={proposedOlt.Longitude}
-                readOnly
-                required
-              />
-            </label>
-            <label className="required">
-              <span>Latitude</span>
-              <input
-                type="number"
-                step="0.000001"
-                value={proposedOlt.Latitude}
-                readOnly
-                required
-              />
-            </label>
-          </div>
-
-          <button type="submit" className="proposed-olt-submit" disabled={isSavingProposedOlt}>
-            {isSavingProposedOlt ? 'Saving...' : 'Save proposed OLT'}
-          </button>
-        </form>
+            </form>
+          )}
+        </div>
       </main>
 
       {/* OLT Node Modal */}

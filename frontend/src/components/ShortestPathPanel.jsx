@@ -31,10 +31,10 @@ export default function ShortestPathPanel({
       ) : (
         <div className="shortest-path-builder">
           <div className="shortest-path-point-row">
-            <div className="point-chip point-start">
+            <button className="point-chip point-start">
               <MapPin size={12} />
               <span>Start</span>
-            </div>
+            </button>
             <div className="point-value">
               {shortestPathStart ? `${shortestPathStart.x.toFixed(2)}, ${shortestPathStart.y.toFixed(2)}` : 'Waiting...'}
             </div>
