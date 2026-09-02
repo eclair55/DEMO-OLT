@@ -95,7 +95,7 @@ public class OracleDbService : IOracleDbService
         //try
         //{
             var results = await ExecuteQueryAsync(sql, parameters);
-            return results.Any() ? results : GetMockOltNodes(oltCode);
+            return results;
         //}
         //catch (Exception ex)
         //{
@@ -119,7 +119,7 @@ public class OracleDbService : IOracleDbService
         //try
         //{
             var results = await ExecuteQueryAsync(sql, parameters);
-            return results.Any() ? results : GetMockParentSlots(oltNode);
+            return results;
         //}
         //catch (Exception ex)
         //{
@@ -146,7 +146,7 @@ public class OracleDbService : IOracleDbService
         //try
         //{
             var results = await ExecuteQueryAsync(sql, parameters);
-            return results.Any() ? results : GetMockLcps(oltNode, slotNumber);
+            return results;
         //}
         //catch (Exception ex)
         //{
@@ -169,7 +169,7 @@ public class OracleDbService : IOracleDbService
         //try
         //{
             var results = await ExecuteQueryAsync(sql, parameters);
-            return results.Any() ? results : GetMockNaps(odnContId);
+            return results;
         //}
         //catch (Exception ex)
         //{
