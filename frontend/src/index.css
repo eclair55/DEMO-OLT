@@ -962,6 +962,24 @@ body {
   animation: spin 0.8s linear infinite;
 }
 
+.success-banner {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ecfdf5;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 0.6rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 100;
+}
+
 .error-banner {
   position: absolute;
   top: 16px;

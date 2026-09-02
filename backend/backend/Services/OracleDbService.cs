@@ -326,7 +326,7 @@ public class OracleDbService : IOracleDbService
                 :TECHNOLOGY,
                 :OLT_LOCATION_TYPE,
                 :OLT_NAME,
-                SDO_GEOMETRY(3001, 32651, SDO_POINT_TYPE(:X, :Y, 0), NULL, NULL),
+                SDO_CS.TRANSFORM (sdo_geometry (3001,8307,sdo_point_type (:LON, :LAT, NULL),NULL,NULL),32651) ,
                 :LAT,
                 :LON
             )";
@@ -345,8 +345,8 @@ public class OracleDbService : IOracleDbService
             new OracleParameter("TECHNOLOGY", string.IsNullOrWhiteSpace(request.Technology) ? DBNull.Value : request.Technology),
             new OracleParameter("OLT_LOCATION_TYPE", string.IsNullOrWhiteSpace(request.OltLocationType) ? DBNull.Value : request.OltLocationType),
             new OracleParameter("OLT_NAME", request.OltName),
-            new OracleParameter("X", x),
-            new OracleParameter("Y", y),
+            new OracleParameter("LON", request.Longitude),
+            new OracleParameter("LAT", request.Latitude),
             new OracleParameter("LAT", request.Latitude),
             new OracleParameter("LON", request.Longitude)
         };

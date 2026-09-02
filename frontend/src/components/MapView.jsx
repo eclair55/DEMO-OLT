@@ -119,11 +119,14 @@ const MapView = forwardRef(function MapView({
     // Styles
     const oltStyle = (feature) => {
       const code = feature.get('OLT_CODE');
+      const status = (feature.get('STATUS') ?? '').toString().toUpperCase();
       const isSelected = feature.get('isSelected');
+      const isProposed = status === 'PROPOSED';
+      const fillColor = isProposed ? '#9ca3af' : isSelected ? '#1d4ed8' : '#2563eb';
       return new Style({
         image: new Circle({
           radius: isSelected ? 12 : 9,
-          fill: new Fill({ color: isSelected ? '#1d4ed8' : '#2563eb' }),
+          fill: new Fill({ color: fillColor }),
           stroke: new Stroke({
             color: '#ffffff',
             width: isSelected ? 3 : 2

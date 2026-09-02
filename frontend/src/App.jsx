@@ -66,15 +66,26 @@ export default function App() {
   const [proposedOltPinMode, setProposedOltPinMode] = useState(false);
   const [proposedOltPin, setProposedOltPin] = useState(null);
 
+  // UI state
+  const [loadingMsg, setLoadingMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [isSidePanelVisible, setIsSidePanelVisible] = useState(true);
+  const [isLegendVisible, setIsLegendVisible] = useState(true);
+
   useEffect(() => {
     shortestPathSelectionRef.current = { start: shortestPathStart, end: shortestPathEnd };
   }, [shortestPathStart, shortestPathEnd]);
 
-  // UI state
-  const [loadingMsg, setLoadingMsg] = useState('');
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [isSidePanelVisible, setIsSidePanelVisible] = useState(true);
-  const [isLegendVisible, setIsLegendVisible] = useState(true);
+  useEffect(() => {
+    if (!successMsg) return undefined;
+
+    const timer = window.setTimeout(() => {
+      setSuccessMsg(null);
+    }, 4000);
+
+    return () => window.clearTimeout(timer);
+  }, [successMsg]);
 
   // Expose global test hook for reliable Playwright testing
   useEffect(() => {
@@ -286,6 +297,7 @@ export default function App() {
 
     setIsSavingProposedOlt(true);
     setLoadingMsg('Saving proposed OLT...');
+    setSuccessMsg(null);
     setErrorMsg(null);
 
     try {
@@ -315,12 +327,16 @@ export default function App() {
       }
 
       setProposedOlt(blankProposedOlt);
-      setLoadingMsg('Proposed OLT saved successfully.');
+      setProposedOltPin(null);
+      setProposedOltPinMode(false);
+      setOlts([]);
+      await loadOlts();
+      setSuccessMsg('Proposed OLT saved successfully.');
+      setLoadingMsg('');
     } catch (err) {
       setErrorMsg(err.message || 'Unable to save the proposed OLT.');
     } finally {
       setIsSavingProposedOlt(false);
-      setLoadingMsg('');
     }
   };
 
@@ -544,6 +560,16 @@ export default function App() {
           <div className="loading-banner">
             <div className="spinner" />
             <span>{loadingMsg}</span>
+          </div>
+        )}
+
+        {/* Success Indicator */}
+        {successMsg && (
+          <div className="success-banner">
+            <span>{successMsg}</span>
+            <button className="error-close" onClick={() => setSuccessMsg(null)}>
+              ✕
+            </button>
           </div>
         )}
 
