@@ -172,4 +172,34 @@ public class OltNetworkController : ControllerBase
             return StatusCode(500, new { message = "Unable to compute shortest path." });
         }
     }
+
+    [HttpPost("proposed-olts")]
+    public async Task<IActionResult> CreateProposedOlt([FromBody] ProposedOltInsertRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.OltName))
+        {
+            return BadRequest(new { message = "OLT_NAME is required." });
+        }
+
+        try
+        {
+            var rowsAffected = await _dbService.CreateProposedOltAsync(request);
+            return Ok(new
+            {
+                success = true,
+                rowsAffected,
+                message = "Proposed OLT saved successfully."
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating proposed OLT {OltName}.", request.OltName);
+            return StatusCode(500, new { message = "Unable to save proposed OLT record." });
+        }
+    }
 }

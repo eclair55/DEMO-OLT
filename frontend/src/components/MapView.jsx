@@ -28,10 +28,13 @@ const MapView = forwardRef(function MapView({
   shortestPathMode,
   shortestPathStart,
   shortestPathEnd,
+  proposedOltPinMode,
+  proposedOltPin,
   onMapCoordinateSelect,
   onOltClick,
   onLcpClick,
-  onNapClick
+  onNapClick,
+  onProposedOltPinSelect
 }, ref) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -41,18 +44,29 @@ const MapView = forwardRef(function MapView({
   const napSourceRef = useRef(new VectorSource());
   const routeSourceRef = useRef(new VectorSource());
   const shortestPathSourceRef = useRef(new VectorSource());
+  const proposedOltPinSourceRef = useRef(new VectorSource());
   const overlayRef = useRef(null);
   const popupElementRef = useRef(null);
   const shortestPathModeRef = useRef(shortestPathMode);
+  const proposedOltPinModeRef = useRef(proposedOltPinMode);
   const onMapCoordinateSelectRef = useRef(onMapCoordinateSelect);
+  const onProposedOltPinSelectRef = useRef(onProposedOltPinSelect);
 
   useEffect(() => {
     shortestPathModeRef.current = shortestPathMode;
   }, [shortestPathMode]);
 
   useEffect(() => {
+    proposedOltPinModeRef.current = proposedOltPinMode;
+  }, [proposedOltPinMode]);
+
+  useEffect(() => {
     onMapCoordinateSelectRef.current = onMapCoordinateSelect;
   }, [onMapCoordinateSelect]);
+
+  useEffect(() => {
+    onProposedOltPinSelectRef.current = onProposedOltPinSelect;
+  }, [onProposedOltPinSelect]);
 
   const zoomToFeature = (source, property, value, maxZoom) => {
     const feature = source.getFeatures().find((item) => item.get(property) === value);
@@ -234,6 +248,25 @@ const MapView = forwardRef(function MapView({
       zIndex: 6
     });
 
+    const proposedOltPinLayer = new VectorLayer({
+      source: proposedOltPinSourceRef.current,
+      style: new Style({
+        image: new Circle({
+          radius: 9,
+          fill: new Fill({ color: '#0f766e' }),
+          stroke: new Stroke({ color: '#ffffff', width: 3 })
+        }),
+        text: new Text({
+          text: 'P',
+          offsetY: -16,
+          fill: new Fill({ color: '#0f172a' }),
+          stroke: new Stroke({ color: '#ffffff', width: 2 }),
+          font: 'bold 10px sans-serif'
+        })
+      }),
+      zIndex: 7
+    });
+
     // Create Popup Overlay
     const overlay = new Overlay({
       element: popupElementRef.current,
@@ -252,7 +285,8 @@ const MapView = forwardRef(function MapView({
         routeLayer,
         oltLayer,
         napLayer,
-        shortestPathPinLayer
+        shortestPathPinLayer,
+        proposedOltPinLayer
       ],
       overlays: [overlay],
       view: new View({
@@ -263,6 +297,12 @@ const MapView = forwardRef(function MapView({
 
     // Map Click Handler
     map.on('singleclick', (evt) => {
+      if (proposedOltPinModeRef.current && onProposedOltPinSelectRef.current) {
+        const [longitude, latitude] = transform(evt.coordinate, 'EPSG:3857', 'EPSG:4326');
+        onProposedOltPinSelectRef.current({ longitude, latitude });
+        return;
+      }
+
       if (shortestPathModeRef.current && onMapCoordinateSelectRef.current) {
         const targetSrid = srid ? `EPSG:${srid}` : 'EPSG:32651';
         const [x, y] = transform(evt.coordinate, 'EPSG:3857', targetSrid);
@@ -373,6 +413,18 @@ const MapView = forwardRef(function MapView({
       shortestPathSourceRef.current.addFeatures(transformedPins);
     }
   }, [shortestPathStart, shortestPathEnd, srid]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    proposedOltPinSourceRef.current.clear();
+
+    if (!proposedOltPin) return;
+
+    const pin = new Feature({
+      geometry: new Point(transform([proposedOltPin.longitude, proposedOltPin.latitude], 'EPSG:4326', 'EPSG:3857'))
+    });
+    proposedOltPinSourceRef.current.addFeature(pin);
+  }, [proposedOltPin]);
 
   // WKT Parser Helper
   const parseWktFeatures = (records, defaultSrid) => {

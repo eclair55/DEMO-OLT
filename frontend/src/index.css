@@ -305,6 +305,107 @@ body {
   padding: 0.9rem;
 }
 
+.proposed-olt-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 12;
+  width: min(440px, calc(100vw - 40px));
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  padding: 1rem;
+}
+
+.proposed-olt-header {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+  margin-bottom: 0.8rem;
+}
+
+.proposed-olt-pin-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.proposed-olt-pin-toggle,
+.proposed-olt-pin-clear {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  cursor: pointer;
+  background: #fff;
+  color: #0f172a;
+}
+
+.proposed-olt-pin-toggle {
+  flex: 1;
+  border-color: #14b8a6;
+  background: #ecfeff;
+  color: #115e59;
+  font-weight: 700;
+}
+
+.proposed-olt-pin-clear {
+  color: #b91c1c;
+}
+
+.proposed-olt-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.proposed-olt-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.proposed-olt-grid label.required span::after {
+  content: ' *';
+  color: #dc2626;
+}
+
+.proposed-olt-grid input {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  font: inherit;
+  background: #fff;
+  color: #0f172a;
+}
+
+.proposed-olt-submit {
+  margin-top: 0.85rem;
+  width: 100%;
+  border: 1px solid #0f766e;
+  background: #14b8a6;
+  color: #ffffff;
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.proposed-olt-submit:hover:not(:disabled) {
+  background: #0d9488;
+}
+
+.proposed-olt-submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .shortest-path-header {
   display: flex;
   align-items: center;

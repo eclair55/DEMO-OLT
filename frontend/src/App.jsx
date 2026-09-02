@@ -47,6 +47,25 @@ export default function App() {
   const [isShortestPathLoading, setIsShortestPathLoading] = useState(false);
   const shortestPathSelectionRef = useRef({ start: null, end: null });
 
+  const blankProposedOlt = {
+    CO_ID: '',
+    CO_NAME: '',
+    CO_OWNER: '',
+    SITE_ID: '',
+    SITENAME: '',
+    TOWER_TYPE: '',
+    TECHNOLOGY: '',
+    OLT_LOCATION_TYPE: '',
+    OLT_NAME: '',
+    Longitude: '',
+    Latitude: ''
+  };
+
+  const [proposedOlt, setProposedOlt] = useState(blankProposedOlt);
+  const [isSavingProposedOlt, setIsSavingProposedOlt] = useState(false);
+  const [proposedOltPinMode, setProposedOltPinMode] = useState(false);
+  const [proposedOltPin, setProposedOltPin] = useState(null);
+
   useEffect(() => {
     shortestPathSelectionRef.current = { start: shortestPathStart, end: shortestPathEnd };
   }, [shortestPathStart, shortestPathEnd]);
@@ -212,6 +231,89 @@ export default function App() {
     mapViewRef.current?.zoomToNap(napId);
   };
 
+  const handleProposedOltChange = (field, value) => {
+    setProposedOlt((current) => ({
+      ...current,
+      [field]: value
+    }));
+  };
+
+  const handleProposedOltPinSelect = ({ longitude, latitude }) => {
+    setProposedOlt((current) => ({
+      ...current,
+      Longitude: Number(longitude).toFixed(6),
+      Latitude: Number(latitude).toFixed(6)
+    }));
+    setProposedOltPin({ longitude, latitude });
+    setProposedOltPinMode(false);
+  };
+
+  const handleClearProposedOltPin = () => {
+    setProposedOltPin(null);
+    setProposedOltPinMode(false);
+    setProposedOlt((current) => ({
+      ...current,
+      Longitude: '',
+      Latitude: ''
+    }));
+  };
+
+  const handleSaveProposedOlt = async (event) => {
+    event.preventDefault();
+
+    const oltName = (proposedOlt.OLT_NAME || '').trim();
+    if (!oltName) {
+      setErrorMsg('OLT_NAME is required before saving the proposed OLT.');
+      return;
+    }
+
+    const longitude = Number(proposedOlt.Longitude);
+    const latitude = Number(proposedOlt.Latitude);
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+      setErrorMsg('Longitude and latitude are required to create the geometry point.');
+      return;
+    }
+
+    setIsSavingProposedOlt(true);
+    setLoadingMsg('Saving proposed OLT...');
+    setErrorMsg(null);
+
+    try {
+      const payload = {
+        CoId: proposedOlt.CO_ID || null,
+        CoName: proposedOlt.CO_NAME || null,
+        CoOwner: proposedOlt.CO_OWNER || null,
+        SiteId: proposedOlt.SITE_ID || null,
+        SiteName: proposedOlt.SITENAME || null,
+        TowerType: proposedOlt.TOWER_TYPE || null,
+        Technology: proposedOlt.TECHNOLOGY || null,
+        OltLocationType: proposedOlt.OLT_LOCATION_TYPE || null,
+        OltName: oltName,
+        Longitude: longitude,
+        Latitude: latitude
+      };
+
+      const res = await fetch('/api/proposed-olts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const errorBody = await res.json().catch(() => ({}));
+        throw new Error(errorBody.message || 'Unable to save the proposed OLT.');
+      }
+
+      setProposedOlt(blankProposedOlt);
+      setLoadingMsg('Proposed OLT saved successfully.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to save the proposed OLT.');
+    } finally {
+      setIsSavingProposedOlt(false);
+      setLoadingMsg('');
+    }
+  };
+
   const clearShortestPathRoute = () => {
     setRoutes((current) => current.filter((route) => route.__shortestPath !== true));
   };
@@ -242,6 +344,11 @@ export default function App() {
   };
 
   const handleMapCoordinateSelect = ({ x, y }) => {
+    if (proposedOltPinMode) {
+      handleProposedOltPinSelect({ longitude: x, latitude: y });
+      return;
+    }
+
     if (!shortestPathMode) return;
 
     const nextPoint = { x, y };
@@ -456,10 +563,13 @@ export default function App() {
           shortestPathMode={shortestPathMode}
           shortestPathStart={shortestPathStart}
           shortestPathEnd={shortestPathEnd}
+          proposedOltPinMode={proposedOltPinMode}
+          proposedOltPin={proposedOltPin}
           onMapCoordinateSelect={handleMapCoordinateSelect}
           onOltClick={handleOltClick}
           onLcpClick={handleLcpClick}
           onNapClick={handleNapClick}
+          onProposedOltPinSelect={handleProposedOltPinSelect}
         />
 
         {/* Legend */}
@@ -549,6 +659,90 @@ export default function App() {
           onClearStart={handleClearShortestPathStart}
           onClearEnd={handleClearShortestPathEnd}
         />
+
+        <form className="proposed-olt-panel" onSubmit={handleSaveProposedOlt}>
+          <div className="proposed-olt-header">
+            <span>Proposed OLT</span>
+          </div>
+
+          <div className="proposed-olt-pin-actions">
+            <button
+              type="button"
+              className="proposed-olt-pin-toggle"
+              onClick={() => setProposedOltPinMode((value) => !value)}
+            >
+              {proposedOltPinMode ? 'Cancel pin drop' : 'Pick location on map'}
+            </button>
+            {(proposedOltPin || proposedOlt.Longitude || proposedOlt.Latitude) && (
+              <button type="button" className="proposed-olt-pin-clear" onClick={handleClearProposedOltPin}>
+                Clear pin
+              </button>
+            )}
+          </div>
+
+          <div className="proposed-olt-grid">
+            <label>
+              <span>CO ID</span>
+              <input value={proposedOlt.CO_ID} onChange={(e) => handleProposedOltChange('CO_ID', e.target.value)} />
+            </label>
+            <label>
+              <span>CO Name</span>
+              <input value={proposedOlt.CO_NAME} onChange={(e) => handleProposedOltChange('CO_NAME', e.target.value)} />
+            </label>
+            <label>
+              <span>CO Owner</span>
+              <input value={proposedOlt.CO_OWNER} onChange={(e) => handleProposedOltChange('CO_OWNER', e.target.value)} />
+            </label>
+            <label>
+              <span>Site ID</span>
+              <input value={proposedOlt.SITE_ID} onChange={(e) => handleProposedOltChange('SITE_ID', e.target.value)} />
+            </label>
+            <label>
+              <span>Site Name</span>
+              <input value={proposedOlt.SITENAME} onChange={(e) => handleProposedOltChange('SITENAME', e.target.value)} />
+            </label>
+            <label>
+              <span>Tower Type</span>
+              <input value={proposedOlt.TOWER_TYPE} onChange={(e) => handleProposedOltChange('TOWER_TYPE', e.target.value)} />
+            </label>
+            <label>
+              <span>Technology</span>
+              <input value={proposedOlt.TECHNOLOGY} onChange={(e) => handleProposedOltChange('TECHNOLOGY', e.target.value)} />
+            </label>
+            <label>
+              <span>Location Type</span>
+              <input value={proposedOlt.OLT_LOCATION_TYPE} onChange={(e) => handleProposedOltChange('OLT_LOCATION_TYPE', e.target.value)} />
+            </label>
+            <label className="required">
+              <span>OLT Name</span>
+              <input value={proposedOlt.OLT_NAME} required onChange={(e) => handleProposedOltChange('OLT_NAME', e.target.value)} />
+            </label>
+            <label className="required">
+              <span>Longitude</span>
+              <input
+                type="number"
+                step="0.000001"
+                value={proposedOlt.Longitude}
+                readOnly
+                required
+              />
+            </label>
+            <label className="required">
+              <span>Latitude</span>
+              <input
+                type="number"
+                step="0.000001"
+                value={proposedOlt.Latitude}
+                readOnly
+                required
+              />
+            </label>
+          </div>
+
+          <button type="submit" className="proposed-olt-submit" disabled={isSavingProposedOlt}>
+            {isSavingProposedOlt ? 'Saving...' : 'Save proposed OLT'}
+          </button>
+        </form>
       </main>
 
       {/* OLT Node Modal */}

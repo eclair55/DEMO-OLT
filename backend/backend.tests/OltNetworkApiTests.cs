@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using OltNetworkApi.Services;
 using Xunit;
 
 namespace backend.tests;
@@ -24,6 +25,25 @@ public class OltNetworkApiTests : IClassFixture<WebApplicationFactory<Program>>
         var json = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.True(json.TryGetProperty("srid", out var sridProp));
         Assert.False(string.IsNullOrWhiteSpace(sridProp.GetString()));
+    }
+
+    [Fact]
+    public void ConvertLongitudeLatitudeToUtm32651_UsesProjectedPointForOracleGeometry()
+    {
+        var point = OracleDbService.ConvertLongitudeLatitudeToUtm32651(121.0167, 14.5995);
+
+        Assert.InRange(point.X, 280000, 290000);
+        Assert.InRange(point.Y, 1600000, 1620000);
+    }
+
+    [Fact]
+    public void GetSpatialInsertDefaults_MatchesOracleTableRequirements()
+    {
+        var defaults = OracleDbService.GetSpatialInsertDefaults();
+
+        Assert.Equal(1174, defaults.ClassId);
+        Assert.Equal(0, defaults.RevisionNumber);
+        Assert.True(defaults.FeatId > 0);
     }
 
     [Fact]

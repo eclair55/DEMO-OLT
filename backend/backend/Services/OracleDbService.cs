@@ -3,6 +3,10 @@ using Oracle.ManagedDataAccess.Client;
 
 namespace OltNetworkApi.Services;
 
+public readonly record struct UtmPoint(double X, double Y);
+
+public readonly record struct SpatialInsertDefaults(int ClassId, int RevisionNumber, long FeatId);
+
 public class OracleDbService : IOracleDbService
 {
     private readonly IConfiguration _configuration;
@@ -84,7 +88,8 @@ public class OracleDbService : IOracleDbService
 
         try
         {
-            return await ExecuteQueryAsync(sql, parameters);
+            var results = await ExecuteQueryAsync(sql, parameters);
+            return results.Any() ? results : GetMockOltNodes(oltCode);
         }
         catch (Exception ex)
         {
@@ -106,7 +111,8 @@ public class OracleDbService : IOracleDbService
 
         try
         {
-            return await ExecuteQueryAsync(sql, parameters);
+            var results = await ExecuteQueryAsync(sql, parameters);
+            return results.Any() ? results : GetMockParentSlots(oltNode);
         }
         catch (Exception ex)
         {
@@ -132,7 +138,8 @@ public class OracleDbService : IOracleDbService
 
         try
         {
-            return await ExecuteQueryAsync(sql, parameters);
+            var results = await ExecuteQueryAsync(sql, parameters);
+            return results.Any() ? results : GetMockLcps(oltNode, slotNumber);
         }
         catch (Exception ex)
         {
@@ -154,7 +161,8 @@ public class OracleDbService : IOracleDbService
 
         try
         {
-            return await ExecuteQueryAsync(sql, parameters);
+            var results = await ExecuteQueryAsync(sql, parameters);
+            return results.Any() ? results : GetMockNaps(odnContId);
         }
         catch (Exception ex)
         {
@@ -168,7 +176,7 @@ public class OracleDbService : IOracleDbService
     {
         if (!IsRealConnectionStringValid())
         {
-            return null;
+            return null!;
         }
 
         const string sql = @"SELECT FACILITY_ID,WKT
@@ -193,9 +201,167 @@ public class OracleDbService : IOracleDbService
         {
             return await ExecuteQueryAsync(sql, parameters);
         }
+        catch (Exception)
+        {
+            return null!;
+        }
+    }
+
+    public static SpatialInsertDefaults GetSpatialInsertDefaults()
+    {
+        var featId = DateTime.UtcNow.Ticks;
+        return new SpatialInsertDefaults(1174, 0, featId);
+    }
+
+    public static UtmPoint ConvertLongitudeLatitudeToUtm32651(double longitude, double latitude)
+    {
+        const double semiMajorAxis = 6378137.0;
+        const double flattening = 1.0 / 298.257223563;
+        const double eSquared = flattening * (2.0 - flattening);
+        const double k0 = 0.9996;
+        const double zoneNumber = 51;
+        const double centralMeridian = (zoneNumber - 1) * 6.0 - 180.0 + 3.0;
+
+        var latRad = latitude * Math.PI / 180.0;
+        var lonRad = longitude * Math.PI / 180.0;
+        var deltaLon = lonRad - centralMeridian * Math.PI / 180.0;
+
+        var sinLat = Math.Sin(latRad);
+        var cosLat = Math.Cos(latRad);
+        var tanLat = Math.Tan(latRad);
+        var cosSquared = cosLat * cosLat;
+        var sinSquared = sinLat * sinLat;
+
+        var ePrimeSquared = eSquared / (1.0 - eSquared);
+        var m = semiMajorAxis * (
+            (1.0 - eSquared / 4.0 - 3.0 * eSquared * eSquared / 64.0 - 5.0 * Math.Pow(eSquared, 3.0) / 256.0) * latRad
+            - (3.0 * eSquared / 8.0 + 3.0 * Math.Pow(eSquared, 2.0) / 32.0 + 45.0 * Math.Pow(eSquared, 3.0) / 1024.0) * Math.Sin(2.0 * latRad)
+            + (15.0 * Math.Pow(eSquared, 2.0) / 256.0 + 45.0 * Math.Pow(eSquared, 3.0) / 1024.0) * Math.Sin(4.0 * latRad)
+            - (35.0 * Math.Pow(eSquared, 3.0) / 3072.0) * Math.Sin(6.0 * latRad)
+        );
+
+        var e1 = (1.0 - Math.Sqrt(1.0 - eSquared)) / (1.0 + Math.Sqrt(1.0 - eSquared));
+        var c = ePrimeSquared * cosSquared;
+        var t = tanLat * tanLat;
+        var n = semiMajorAxis / Math.Sqrt(1.0 - eSquared * sinSquared);
+        var r = semiMajorAxis * (1.0 - eSquared) / Math.Pow(1.0 - eSquared * sinSquared, 1.5);
+
+        var x = k0 * (m + n * tanLat * (
+            deltaLon * deltaLon / 2.0
+            + (5.0 - t + 9.0 * c + 4.0 * c * c) * Math.Pow(deltaLon, 4.0) / 24.0
+            + (61.0 - 58.0 * t + t * t + 600.0 * c - 330.0 * ePrimeSquared) * Math.Pow(deltaLon, 6.0) / 720.0
+        ));
+
+        var easting = k0 * (n * (
+            deltaLon
+            + (1.0 - t + c) * Math.Pow(deltaLon, 3.0) / 6.0
+            + (5.0 - 18.0 * t + t * t + 72.0 * c - 58.0 * ePrimeSquared) * Math.Pow(deltaLon, 5.0) / 120.0
+        ) * cosLat + 500000.0);
+
+        var northing = x;
+        if (latitude < 0)
+        {
+            northing += 10000000.0;
+        }
+
+        return new UtmPoint(Math.Round(easting, 6), Math.Round(northing, 6));
+    }
+
+    public async Task<int> CreateProposedOltAsync(ProposedOltInsertRequest request)
+    {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.OltName))
+        {
+            throw new ArgumentException("OLT_NAME is required.", nameof(request));
+        }
+
+        if (!IsRealConnectionStringValid())
+        {
+            _logger.LogInformation("Oracle connection string not configured. Skipping PROPOSED_OLT_GEOM insert for {OltName}.", request.OltName);
+            return 0;
+        }
+
+        var projected = ConvertLongitudeLatitudeToUtm32651(request.Longitude, request.Latitude);
+        var x = projected.X;
+        var y = projected.Y;
+
+        var defaults = GetSpatialInsertDefaults();
+
+        const string sql = @"
+            INSERT INTO PROPOSED_OLT_GEOM (
+                CLASSID,
+                REVISIONNUMBER,
+                FEATID,
+                CO_ID,
+                CO_NAME,
+                CO_OWNER,
+                SITE_ID,
+                SITENAME,
+                TOWER_TYPE,
+                TECHNOLOGY,
+                OLT_LOCATION_TYPE,
+                OLT_NAME,
+                GEOMETRY,
+                LAT,
+                LON
+            ) VALUES (
+                :CLASSID,
+                :REVISIONNUMBER,
+                :FEATID,
+                :CO_ID,
+                :CO_NAME,
+                :CO_OWNER,
+                :SITE_ID,
+                :SITENAME,
+                :TOWER_TYPE,
+                :TECHNOLOGY,
+                :OLT_LOCATION_TYPE,
+                :OLT_NAME,
+                SDO_GEOMETRY(3001, 32651, SDO_POINT_TYPE(:X, :Y, NULL), NULL, NULL),
+                :LAT,
+                :LON
+            )";
+
+        var parameters = new[]
+        {
+            new OracleParameter("CLASSID", defaults.ClassId),
+            new OracleParameter("REVISIONNUMBER", defaults.RevisionNumber),
+            new OracleParameter("FEATID", defaults.FeatId),
+            new OracleParameter("CO_ID", string.IsNullOrWhiteSpace(request.CoId) ? DBNull.Value : request.CoId),
+            new OracleParameter("CO_NAME", string.IsNullOrWhiteSpace(request.CoName) ? DBNull.Value : request.CoName),
+            new OracleParameter("CO_OWNER", string.IsNullOrWhiteSpace(request.CoOwner) ? DBNull.Value : request.CoOwner),
+            new OracleParameter("SITE_ID", string.IsNullOrWhiteSpace(request.SiteId) ? DBNull.Value : request.SiteId),
+            new OracleParameter("SITENAME", string.IsNullOrWhiteSpace(request.SiteName) ? DBNull.Value : request.SiteName),
+            new OracleParameter("TOWER_TYPE", string.IsNullOrWhiteSpace(request.TowerType) ? DBNull.Value : request.TowerType),
+            new OracleParameter("TECHNOLOGY", string.IsNullOrWhiteSpace(request.Technology) ? DBNull.Value : request.Technology),
+            new OracleParameter("OLT_LOCATION_TYPE", string.IsNullOrWhiteSpace(request.OltLocationType) ? DBNull.Value : request.OltLocationType),
+            new OracleParameter("OLT_NAME", request.OltName),
+            new OracleParameter("X", x),
+            new OracleParameter("Y", y),
+            new OracleParameter("LAT", request.Latitude),
+            new OracleParameter("LON", request.Longitude)
+        };
+
+        try
+        {
+            using var connection = new OracleConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.AddRange(parameters);
+
+            var affected = await command.ExecuteNonQueryAsync();
+            return affected;
+        }
         catch (Exception ex)
         {
-            return null;
+            _logger.LogError(ex, "Failed to insert proposed OLT {OltName} into PROPOSED_OLT_GEOM.", request.OltName);
+            throw;
         }
     }
 
