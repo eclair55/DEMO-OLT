@@ -61,8 +61,13 @@ public class OracleDbService : IOracleDbService
 
         const string sql = @"
             SELECT SDO_UTIL.TO_WKTGEOMETRY(GEOMETRY) AS WKT,
-                   OLT_CODE
-            FROM OLT_GEOM";
+                   OLT_CODE, 'LIVE' AS STATUS
+            FROM OLT_GEOM
+            UNION ALL
+            SELECT SDO_UTIL.TO_WKTGEOMETRY(GEOMETRY) AS WKT,
+                   OLT_CODE , 'PROPOSED' AS STATUS
+            FROM PROPOSED_OLT_GEOM";
+            
 
         try
         {
