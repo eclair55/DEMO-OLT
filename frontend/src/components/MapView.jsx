@@ -9,7 +9,9 @@ import OSM from 'ol/source/OSM';
 import Feature from 'ol/Feature';
 import Overlay from 'ol/Overlay';
 import WKT from 'ol/format/WKT';
+import { Point } from 'ol/geom';
 import { getCenter } from 'ol/extent';
+import { transform } from 'ol/proj';
 import { Style, Circle, Fill, Stroke, Text, RegularShape } from 'ol/style';
 import proj4 from 'proj4';
 import { register } from 'ol/proj/proj4';
@@ -23,6 +25,10 @@ const MapView = forwardRef(function MapView({
   selectedOltCode,
   selectedLcpId,
   selectedNapId,
+  shortestPathMode,
+  shortestPathStart,
+  shortestPathEnd,
+  onMapCoordinateSelect,
   onOltClick,
   onLcpClick,
   onNapClick
@@ -34,8 +40,19 @@ const MapView = forwardRef(function MapView({
   const lcpSourceRef = useRef(new VectorSource());
   const napSourceRef = useRef(new VectorSource());
   const routeSourceRef = useRef(new VectorSource());
+  const shortestPathSourceRef = useRef(new VectorSource());
   const overlayRef = useRef(null);
   const popupElementRef = useRef(null);
+  const shortestPathModeRef = useRef(shortestPathMode);
+  const onMapCoordinateSelectRef = useRef(onMapCoordinateSelect);
+
+  useEffect(() => {
+    shortestPathModeRef.current = shortestPathMode;
+  }, [shortestPathMode]);
+
+  useEffect(() => {
+    onMapCoordinateSelectRef.current = onMapCoordinateSelect;
+  }, [onMapCoordinateSelect]);
 
   const zoomToFeature = (source, property, value, maxZoom) => {
     const feature = source.getFeatures().find((item) => item.get(property) === value);
@@ -167,6 +184,10 @@ const MapView = forwardRef(function MapView({
       stroke: new Stroke({ color: '#7c3aed', width: 4 })
     });
 
+    const shortestPathStyle = new Style({
+      stroke: new Stroke({ color: '#ef4444', width: 5 })
+    });
+
     const oltLayer = new VectorLayer({
       source: oltSourceRef.current,
       style: oltStyle,
@@ -187,8 +208,30 @@ const MapView = forwardRef(function MapView({
 
     const routeLayer = new VectorLayer({
       source: routeSourceRef.current,
-      style: routeStyle,
+      style: (feature) => feature.get('__shortestPath') ? shortestPathStyle : routeStyle,
       zIndex: 1
+    });
+
+    const shortestPathPinLayer = new VectorLayer({
+      source: shortestPathSourceRef.current,
+      style: (feature) => {
+        const color = feature.get('pinColor') || '#16a34a';
+        return new Style({
+          image: new Circle({
+            radius: 9,
+            fill: new Fill({ color }),
+            stroke: new Stroke({ color: '#ffffff', width: 3 })
+          }),
+          text: new Text({
+            text: feature.get('label') || '',
+            offsetY: -16,
+            fill: new Fill({ color: '#0f172a' }),
+            stroke: new Stroke({ color: '#ffffff', width: 2 }),
+            font: 'bold 10px sans-serif'
+          })
+        });
+      },
+      zIndex: 6
     });
 
     // Create Popup Overlay
@@ -208,7 +251,8 @@ const MapView = forwardRef(function MapView({
         lcpLayer,
         routeLayer,
         oltLayer,
-        napLayer
+        napLayer,
+        shortestPathPinLayer
       ],
       overlays: [overlay],
       view: new View({
@@ -219,6 +263,13 @@ const MapView = forwardRef(function MapView({
 
     // Map Click Handler
     map.on('singleclick', (evt) => {
+      if (shortestPathModeRef.current && onMapCoordinateSelectRef.current) {
+        const targetSrid = srid ? `EPSG:${srid}` : 'EPSG:32651';
+        const [x, y] = transform(evt.coordinate, 'EPSG:3857', targetSrid);
+        onMapCoordinateSelectRef.current({ x, y });
+        return;
+      }
+
       let featureFound = false;
       map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
         if (featureFound) return;
@@ -290,6 +341,38 @@ const MapView = forwardRef(function MapView({
     const features = parseWktFeatures(routes, '32651');
     routeSourceRef.current.addFeatures(features);
   }, [routes, srid]);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    shortestPathSourceRef.current.clear();
+
+    const pins = [];
+    if (shortestPathStart) {
+      pins.push(new Feature({
+        geometry: new Point([shortestPathStart.x, shortestPathStart.y]),
+        label: 'S',
+        pinColor: '#16a34a'
+      }));
+    }
+    if (shortestPathEnd) {
+      pins.push(new Feature({
+        geometry: new Point([shortestPathEnd.x, shortestPathEnd.y]),
+        label: 'E',
+        pinColor: '#dc2626'
+      }));
+    }
+
+    if (pins.length > 0) {
+      const transformedPins = pins.map((feature) => {
+        const proj = srid ? `EPSG:${srid}` : 'EPSG:32651';
+        const coords = feature.getGeometry().getCoordinates();
+        const transformed = transform(coords, proj, 'EPSG:3857');
+        feature.setGeometry(new Point(transformed));
+        return feature;
+      });
+      shortestPathSourceRef.current.addFeatures(transformedPins);
+    }
+  }, [shortestPathStart, shortestPathEnd, srid]);
 
   // WKT Parser Helper
   const parseWktFeatures = (records, defaultSrid) => {

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Network, Cpu, Layers, HardDrive, Radio, LocateFixed, Eye, EyeOff, Route } from 'lucide-react';
 
 export default function SidePanel({
@@ -25,7 +25,6 @@ export default function SidePanel({
 }) {
   return (
     <aside className={`side-panel ${isVisible ? 'visible' : 'hidden'}`}>
-      {/* Selected OLT Section */}
       <div className="panel-section">
         <div className="panel-section-title">
           <Network size={16} color="#2563eb" />
@@ -43,7 +42,6 @@ export default function SidePanel({
         )}
       </div>
 
-      {/* Selected OLT Node Section */}
       {selectedOltNode && (
         <div className="panel-section">
           <div className="panel-section-title">
@@ -67,7 +65,6 @@ export default function SidePanel({
         </div>
       )}
 
-      {/* Parent Slots Section */}
       {parentSlots && parentSlots.length > 0 && (
         <div className="panel-section">
           <div className="panel-section-title">
@@ -197,7 +194,6 @@ export default function SidePanel({
           </div>
         </div>
       )}
-
     </aside>
   );
 }

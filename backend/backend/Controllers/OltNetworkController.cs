@@ -8,11 +8,13 @@ namespace OltNetworkApi.Controllers;
 public class OltNetworkController : ControllerBase
 {
     private readonly IOracleDbService _dbService;
+    private readonly IPdrMapService _pdrMapService;
     private readonly ILogger<OltNetworkController> _logger;
 
-    public OltNetworkController(IOracleDbService dbService, ILogger<OltNetworkController> logger)
+    public OltNetworkController(IOracleDbService dbService, IPdrMapService pdrMapService, ILogger<OltNetworkController> logger)
     {
         _dbService = dbService;
+        _pdrMapService = pdrMapService;
         _logger = logger;
     }
 
@@ -112,6 +114,62 @@ public class OltNetworkController : ControllerBase
         {
             _logger.LogError(ex, "Error fetching route for LCP {LcpFacilityId} and NAP {NapFacilityId}", LCP_FACILITY_ID, NAP_FACILITY_ID);
             return StatusCode(500, new { message = $"Unable to load route for LCP {LCP_FACILITY_ID} and NAP {NAP_FACILITY_ID}." });
+        }
+    }
+
+    [HttpGet("shortest-path")]
+    public async Task<IActionResult> GetShortestPath(
+        [FromQuery] double startX,
+        [FromQuery] double startY,
+        [FromQuery] double endX,
+        [FromQuery] double endY,
+        [FromQuery] double maxSnapDistance = 0)
+    {
+        try
+        {
+            var result = await _pdrMapService.GetShortestPathAsync(startX, startY, endX, endY, maxSnapDistance);
+            if (result == null)
+            {
+                return StatusCode(502, new { message = "Unable to fetch shortest path from the external PDR map service." });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching shortest path from external service for start ({StartX}, {StartY}) and end ({EndX}, {EndY})", startX, startY, endX, endY);
+            return StatusCode(500, new { message = "Unable to compute shortest path." });
+        }
+    }
+
+    [HttpPost("shortest-path")]
+    public async Task<IActionResult> GetShortestPathPost([FromBody] ShortestPathRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        try
+        {
+            var result = await _pdrMapService.GetShortestPathAsync(
+                request.StartX,
+                request.StartY,
+                request.EndX,
+                request.EndY,
+                request.MaxSnapDistance);
+
+            if (result == null)
+            {
+                return StatusCode(502, new { message = "Unable to fetch shortest path from the external PDR map service." });
+            }
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching shortest path from external service using POST request.");
+            return StatusCode(500, new { message = "Unable to compute shortest path." });
         }
     }
 }

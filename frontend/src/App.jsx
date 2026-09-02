@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import MapView from './components/MapView';
 import OltNodeModal from './components/OltNodeModal';
 import SidePanel from './components/SidePanel';
+import ShortestPathPanel from './components/ShortestPathPanel';
 import {
   Network,
   ChevronRight,
@@ -38,6 +39,17 @@ export default function App() {
   const [routeStatuses, setRouteStatuses] = useState({});
   const [isLoadingRoutes, setIsLoadingRoutes] = useState(false);
   const [routeVisibility, setRouteVisibility] = useState({});
+
+  const [shortestPathMode, setShortestPathMode] = useState(false);
+  const [shortestPathStart, setShortestPathStart] = useState(null);
+  const [shortestPathEnd, setShortestPathEnd] = useState(null);
+  const [maxSnapDistance, setMaxSnapDistance] = useState(100);
+  const [isShortestPathLoading, setIsShortestPathLoading] = useState(false);
+  const shortestPathSelectionRef = useRef({ start: null, end: null });
+
+  useEffect(() => {
+    shortestPathSelectionRef.current = { start: shortestPathStart, end: shortestPathEnd };
+  }, [shortestPathStart, shortestPathEnd]);
 
   // UI state
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -200,6 +212,105 @@ export default function App() {
     mapViewRef.current?.zoomToNap(napId);
   };
 
+  const clearShortestPathRoute = () => {
+    setRoutes((current) => current.filter((route) => route.__shortestPath !== true));
+  };
+
+  const resetShortestPathSelection = () => {
+    setShortestPathMode(false);
+    setShortestPathStart(null);
+    setShortestPathEnd(null);
+    setIsShortestPathLoading(false);
+    setLoadingMsg('');
+    clearShortestPathRoute();
+  };
+
+  const handleStartShortestPath = () => {
+    setShortestPathMode(true);
+    setShortestPathStart(null);
+    setShortestPathEnd(null);
+    setErrorMsg(null);
+    setLoadingMsg('');
+  };
+
+  const handleClearShortestPathStart = () => {
+    setShortestPathStart(null);
+  };
+
+  const handleClearShortestPathEnd = () => {
+    setShortestPathEnd(null);
+  };
+
+  const handleMapCoordinateSelect = ({ x, y }) => {
+    if (!shortestPathMode) return;
+
+    const nextPoint = { x, y };
+    const currentSelection = shortestPathSelectionRef.current;
+
+    if (!currentSelection.start) {
+      setShortestPathStart(nextPoint);
+      setShortestPathEnd(null);
+      setLoadingMsg('');
+      return;
+    }
+
+    if (!currentSelection.end) {
+      setShortestPathEnd(nextPoint);
+      setLoadingMsg('');
+      return;
+    }
+
+    setShortestPathStart(nextPoint);
+    setShortestPathEnd(null);
+    setLoadingMsg('');
+  };
+
+  const handleCalculateShortestPath = async () => {
+    if (!shortestPathStart || !shortestPathEnd) return;
+
+    setIsShortestPathLoading(true);
+    setLoadingMsg('Calculating shortest path...');
+    setErrorMsg(null);
+
+    try {
+      const query = new URLSearchParams({
+        startX: String(shortestPathStart.x),
+        startY: String(shortestPathStart.y),
+        endX: String(shortestPathEnd.x),
+        endY: String(shortestPathEnd.y),
+        maxSnapDistance: String(maxSnapDistance)
+      });
+
+      const res = await fetch(`/api/shortest-path?${query}`);
+      if (!res.ok) throw new Error('Failed to calculate shortest path.');
+
+      const data = await res.json();
+      const routeWkt = data.RouteWkt ?? data.routeWkt;
+      if (!routeWkt) throw new Error('The service returned no route geometry.');
+
+      clearShortestPathRoute();
+      setRoutes((current) => [
+        ...current,
+        {
+          WKT: routeWkt,
+          __shortestPath: true,
+          routeNapId: 'shortest-path',
+          Status: data.Status ?? 'OK'
+        }
+      ]);
+
+      setShortestPathMode(false);
+      setShortestPathStart(null);
+      setShortestPathEnd(null);
+      setLoadingMsg('Shortest path loaded.');
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to calculate the shortest path.');
+    } finally {
+      setIsShortestPathLoading(false);
+      setLoadingMsg('');
+    }
+  };
+
   const getFacilityId = (record) => (
     record.ODNC_FACILITY_ID ?? record.odnc_facility_id ?? record.FACILITY_ID ?? record.facility_id
   );
@@ -261,6 +372,7 @@ export default function App() {
     setRoutes([]);
     setRouteStatuses({});
     setRouteVisibility({});
+    resetShortestPathSelection();
     setErrorMsg(null);
   };
 
@@ -295,7 +407,7 @@ export default function App() {
         </span>
         <ChevronRight size={14} className="breadcrumb-separator" />
         <span className={`breadcrumb-item ${selectedSlot ? 'active' : ''}`}>
-          Slot: {selectedSlot !== null ? selectedSlot : 'None'}
+          Card #: {selectedSlot !== null ? selectedSlot : 'None'}
         </span>
         <ChevronRight size={14} className="breadcrumb-separator" />
         <span className={`breadcrumb-item ${selectedLcpId ? 'active' : ''}`}>
@@ -341,6 +453,10 @@ export default function App() {
           selectedOltCode={selectedOltCode}
           selectedLcpId={selectedLcpId}
           selectedNapId={selectedNapId}
+          shortestPathMode={shortestPathMode}
+          shortestPathStart={shortestPathStart}
+          shortestPathEnd={shortestPathEnd}
+          onMapCoordinateSelect={handleMapCoordinateSelect}
           onOltClick={handleOltClick}
           onLcpClick={handleLcpClick}
           onNapClick={handleNapClick}
@@ -418,6 +534,20 @@ export default function App() {
           }))}
           onZoomToLcp={(lcpId) => mapViewRef.current?.zoomToLcp(lcpId)}
           onZoomToNap={(napId) => mapViewRef.current?.zoomToNap(napId)}
+        />
+
+        <ShortestPathPanel
+          shortestPathMode={shortestPathMode}
+          shortestPathStart={shortestPathStart}
+          shortestPathEnd={shortestPathEnd}
+          maxSnapDistance={maxSnapDistance}
+          isShortestPathLoading={isShortestPathLoading}
+          onSetMaxSnapDistance={setMaxSnapDistance}
+          onStartShortestPath={handleStartShortestPath}
+          onResetShortestPath={resetShortestPathSelection}
+          onCalculateShortestPath={handleCalculateShortestPath}
+          onClearStart={handleClearShortestPathStart}
+          onClearEnd={handleClearShortestPathEnd}
         />
       </main>
 
