@@ -3,13 +3,13 @@ using OltNetworkApi.Services;
 
 namespace OltNetworkApi.Controllers;
 
-[ApiController]
 [Route("api")]
 public class OltNetworkController : ControllerBase
 {
     private readonly IOracleDbService _dbService;
     private readonly IPdrMapService _pdrMapService;
     private readonly ILogger<OltNetworkController> _logger;
+
 
     public OltNetworkController(IOracleDbService dbService, IPdrMapService pdrMapService, ILogger<OltNetworkController> logger)
     {
@@ -170,6 +170,36 @@ public class OltNetworkController : ControllerBase
         {
             _logger.LogError(ex, "Error fetching shortest path from external service using POST request.");
             return StatusCode(500, new { message = "Unable to compute shortest path." });
+        }
+    }
+
+    [HttpPost("redline/select-odn")]
+    public async Task<IActionResult> SelectOdnWithinRedline([FromBody] RedlineSelectionRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RedlineWkt))
+        {
+            return BadRequest(new { message = "Redline geometry is required." });
+        }
+
+        if (request.FacilityTypes == null || request.FacilityTypes.Count == 0)
+        {
+            return BadRequest(new { message = "At least one facility type must be selected." });
+        }
+
+        try
+        {
+            var records = await _dbService.SelectOdnWithinRedlineAsync(request.RedlineWkt, request.FacilityTypes);
+            return Ok(new { success = true, records = records });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error selecting ODN records within redline.");
+            return StatusCode(500, new { message = "Unable to select ODN records within the redline." });
         }
     }
 

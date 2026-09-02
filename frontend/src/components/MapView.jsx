@@ -37,6 +37,7 @@ const MapView = forwardRef(function MapView({
   redlinePolygons,
   isRedlineDrawing,
   onRedlineDrawComplete,
+  onRedlineContextMenu,
   onMapCoordinateSelect,
   onOltClick,
   onLcpClick,
@@ -359,6 +360,29 @@ const MapView = forwardRef(function MapView({
       });
     });
 
+    map.on('contextmenu', (evt) => {
+      evt.preventDefault();
+
+      let featureFound = false;
+      map.forEachFeatureAtPixel(evt.pixel, (feature, layer) => {
+        if (featureFound) return;
+        if (layer && layer.get('isRedlineLayer')) {
+          const targetSrid = srid ? `EPSG:${srid}` : 'EPSG:32651';
+          const geometry = feature.getGeometry()?.clone();
+          if (!geometry) return;
+
+          try {
+            geometry.transform('EPSG:3857', targetSrid);
+            const wkt = new WKT().writeGeometry(geometry);
+            onRedlineContextMenu?.({ x: evt.pixel[0], y: evt.pixel[1], geometryWkt: wkt });
+          } catch (error) {
+            console.warn('Unable to convert redline geometry for selection.', error);
+          }
+          featureFound = true;
+        }
+      });
+    });
+
     // Hover Tooltip / Pointer Handler
     map.on('pointermove', (evt) => {
       if (evt.dragging) return;
@@ -627,7 +651,12 @@ const MapView = forwardRef(function MapView({
   }, [naps, srid]);
 
   return (
-    <div className="map-container">
+    <div
+      className="map-container"
+      onContextMenu={(event) => {
+        event.preventDefault();
+      }}
+    >
       <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
       <div className="zoom-level" aria-live="polite">
         Zoom {zoomLevel}

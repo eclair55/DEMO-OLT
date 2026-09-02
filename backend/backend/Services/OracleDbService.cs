@@ -214,6 +214,69 @@ public class OracleDbService : IOracleDbService
         }
     }
 
+    public async Task<IEnumerable<Dictionary<string, object?>>> SelectOdnWithinRedlineAsync(string redlineWkt, IEnumerable<string> facilityTypes)
+    {
+        if (!IsRealConnectionStringValid())
+        {
+            return Array.Empty<Dictionary<string, object?>>();
+        }
+
+        if (string.IsNullOrWhiteSpace(redlineWkt))
+        {
+            throw new ArgumentException("Redline geometry is required.", nameof(redlineWkt));
+        }
+
+        var selectedTypes = (facilityTypes ?? Enumerable.Empty<string>())
+            .Where((type) => !string.IsNullOrWhiteSpace(type))
+            .Select((type) => type.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (selectedTypes.Count == 0)
+        {
+            throw new ArgumentException("At least one facility type must be selected.", nameof(facilityTypes));
+        }
+
+        var normalizedTypes = selectedTypes
+            .Select((type) => type.ToUpperInvariant())
+            .ToList();
+
+        var inClause = string.Join(", ", normalizedTypes.Select((_, index) => $":type{index}"));
+        var sql = $@"
+            SELECT ODNC_FACILITY_ID, ODNC_ODN_CONT_ID, ODNC_CONT_TYPE
+            FROM ODN_CONT_GEOM
+            WHERE UPPER(ODNC_CONT_TYPE) IN ({inClause})
+              AND SDO_RELATE(
+                GEOMETRY,
+                SDO_GEOMETRY(
+                    2003,
+                    32651,
+                    NULL,
+                    SDO_UTIL.FROM_WKTGEOMETRY(:redlineWkt).SDO_ELEM_INFO,
+                    SDO_UTIL.FROM_WKTGEOMETRY(:redlineWkt).SDO_ORDINATES
+                ),
+                'mask=ANYINTERACT'
+              ) = 'TRUE'";
+
+        var parameters = normalizedTypes
+            .Select((type, index) => new OracleParameter($"type{index}", type))
+            .Concat(new[]
+            {
+                new OracleParameter("redlineWkt", redlineWkt)
+            })
+            .ToArray();
+
+        try
+        {
+            return await ExecuteQueryAsync(sql, parameters);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to select ODN records within redline geometry.");
+            throw;
+        }
+    }
+
     public static SpatialInsertDefaults GetSpatialInsertDefaults()
     {
         var featId = DateTime.UtcNow.Ticks;

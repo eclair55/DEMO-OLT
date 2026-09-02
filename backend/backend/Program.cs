@@ -3,6 +3,8 @@ using OltNetworkApi.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IOracleDbService, OracleDbService>();
 builder.Services.AddHttpClient<IPdrMapService, PdrMapService>();
@@ -25,6 +27,16 @@ app.UseDefaultFiles();
 app.UseStaticFiles();
 
 app.UseAuthorization();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "OltNetworkApi V1");
+        options.RoutePrefix = "swagger";
+    });
+}
 
 app.MapControllers();
 

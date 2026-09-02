@@ -35,3 +35,10 @@ public class ShortestPathResult
     public long NetworkRevision { get; set; }
     public int SearchAttemptCount { get; set; }
 }
+
+
+public class RedlineSelectionRequest
+{
+    public string? RedlineWkt { get; set; }
+    public List<string>? FacilityTypes { get; set; }
+}

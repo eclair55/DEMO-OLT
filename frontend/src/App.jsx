@@ -49,6 +49,9 @@ export default function App() {
   const [isRedlineDrawing, setIsRedlineDrawing] = useState(false);
   const [redlineVisible, setRedlineVisible] = useState(false);
   const [redlinePolygons, setRedlinePolygons] = useState([]);
+  const [redlineContextMenu, setRedlineContextMenu] = useState(null);
+  const [redlineFacilityTypes, setRedlineFacilityTypes] = useState(['LCP', 'NAP']);
+  const [redlineSelectionResults, setRedlineSelectionResults] = useState([]);
 
   const [shortestPathMode, setShortestPathMode] = useState(false);
   const [shortestPathStart, setShortestPathStart] = useState(null);
@@ -575,6 +578,61 @@ export default function App() {
     setIsRedlineDrawing(false);
   };
 
+  const toggleRedlineFacilityType = (facilityType) => {
+    setRedlineFacilityTypes((current) => (current.includes(facilityType)
+      ? current.filter((type) => type !== facilityType)
+      : [...current, facilityType]));
+  };
+
+  const handleRedlineContextMenu = ({ x, y, geometryWkt }) => {
+    setRedlineContextMenu({ x, y, geometryWkt });
+  };
+
+  const handleRedlineSelectionSubmit = async () => {
+    if (!redlineContextMenu?.geometryWkt) return;
+    if (redlineFacilityTypes.length === 0) {
+      setErrorMsg('Select at least one facility type to process.');
+      return;
+    }
+
+    setLoadingMsg('Selecting ODN records...');
+    setErrorMsg(null);
+
+    try {
+      const response = await fetch('/api/redline/select-odn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          redlineWkt: redlineContextMenu.geometryWkt,
+          facilityTypes: redlineFacilityTypes
+        })
+      });
+
+      if (!response.ok) {
+        const message = await response.json().catch(() => ({}));
+        throw new Error(message.message || 'Unable to select ODNs within the redline.');
+      }
+
+      const data = await response.json();
+      const records = Array.isArray(data?.records) ? data.records : [];
+      setRedlineSelectionResults(records);
+      setSuccessMsg(records.length > 0
+        ? `Selected ${records.length} ODN record(s) within the redline.`
+        : 'No ODN records matched the selected facility types inside the redline.');
+
+      setActiveFeatureModule(null);
+      setIsSidePanelVisible(false);
+      setIsGeoServerPanelOpen(false);
+      setIsMapToolboxOpen(false);
+      setIsRedlineDrawing(false);
+      setRedlineContextMenu(null);
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to select ODN records within the redline.');
+    } finally {
+      setLoadingMsg('');
+    }
+  };
+
   // Map slots with click callback
   const decoratedSlots = parentSlots.map((slot) => ({
     ...slot,
@@ -672,12 +730,71 @@ export default function App() {
           redlinePolygons={redlinePolygons}
           isRedlineDrawing={isRedlineDrawing}
           onRedlineDrawComplete={handleRedlineDrawComplete}
+          onRedlineContextMenu={handleRedlineContextMenu}
           onMapCoordinateSelect={handleMapCoordinateSelect}
           onOltClick={handleOltClick}
           onLcpClick={handleLcpClick}
           onNapClick={handleNapClick}
           onProposedOltPinSelect={handleProposedOltPinSelect}
         />
+
+        {redlineContextMenu && (
+          <div
+            className="redline-context-menu"
+            style={{ left: `${redlineContextMenu.x + 18}px`, top: `${redlineContextMenu.y + 18}px` }}
+          >
+            <div className="redline-context-header">Select facility type</div>
+            <div className="redline-context-options">
+              {['LCP', 'NAP', 'HYBRID', 'MDU'].map((facilityType) => (
+                <label key={facilityType} className="redline-context-option">
+                  <input
+                    type="checkbox"
+                    checked={redlineFacilityTypes.includes(facilityType)}
+                    onChange={() => toggleRedlineFacilityType(facilityType)}
+                  />
+                  <span>{facilityType}</span>
+                </label>
+              ))}
+            </div>
+            <div className="redline-context-actions">
+              <button type="button" className="redline-context-submit" onClick={handleRedlineSelectionSubmit}>
+                Process selected ODN
+              </button>
+              <button type="button" className="redline-context-close" onClick={() => setRedlineContextMenu(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
+        {redlineSelectionResults.length > 0 && (
+          <div className="redline-results-panel">
+            <div className="redline-results-header">Selected ODNs</div>
+            <ul className="redline-results-list">
+              {redlineSelectionResults.map((record, index) => (
+                <li key={`${record.ODNC_FACILITY_ID ?? 'facility'}-${record.ODNC_ODN_CONT_ID ?? index}`}>
+                  <span>{record.ODNC_CONT_TYPE || 'Unknown'}</span>
+                  <span>{record.ODNC_ODN_CONT_ID || record.ODNC_FACILITY_ID || 'N/A'}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="redline-results-actions">
+              <label className="redline-boundary-option">
+                <input type="checkbox" />
+                <span>The analysis shall be conducted within the province boundary</span>
+              </label>
+              <label className="redline-boundary-option">
+                <input type="checkbox" />
+                <span>Avoid bridge / railway routes?  </span>
+              </label>
+
+              <button type="button" className="redline-nearest-olt-button">
+                Nearest Homing OLT
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Legend */}
         <div className={`map-legend ${isLegendVisible ? '' : 'collapsed'}`} hidden>

@@ -23,6 +23,7 @@ public interface IOracleDbService
     Task<IEnumerable<Dictionary<string, object?>>> GetNapsByLcpIdAsync(string odnContId);
 
     Task<IEnumerable<Dictionary<string, object?>>> getRoute(string LCP_FACILITY_ID, string NAP_FACILITY_ID);
+    Task<IEnumerable<Dictionary<string, object?>>> SelectOdnWithinRedlineAsync(string redlineWkt, IEnumerable<string> facilityTypes);
     Task<int> CreateProposedOltAsync(ProposedOltInsertRequest request);
     string GetGeometrySrid();
 }
