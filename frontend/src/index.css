@@ -414,13 +414,41 @@ body {
   backdrop-filter: blur(6px);
 }
 
+.redline-results-header-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
 .redline-results-header {
   font-size: 0.72rem;
   font-weight: 800;
   color: #0f172a;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  margin-bottom: 0.75rem;
+}
+
+.redline-results-close {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.redline-results-close:hover {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
 }
 
 .redline-results-list {

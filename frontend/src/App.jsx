@@ -769,7 +769,17 @@ export default function App() {
 
         {redlineSelectionResults.length > 0 && (
           <div className="redline-results-panel">
-            <div className="redline-results-header">Selected ODNs</div>
+            <div className="redline-results-header-wrap">
+              <div className="redline-results-header">Selected ODNs</div>
+              <button
+                type="button"
+                className="redline-results-close"
+                aria-label="Close selected ODN panel"
+                onClick={() => setRedlineSelectionResults([])}
+              >
+                ✕
+              </button>
+            </div>
             <ul className="redline-results-list">
               {redlineSelectionResults.map((record, index) => (
                 <li key={`${record.ODNC_FACILITY_ID ?? 'facility'}-${record.ODNC_ODN_CONT_ID ?? index}`}>
@@ -786,7 +796,7 @@ export default function App() {
               </label>
               <label className="redline-boundary-option">
                 <input type="checkbox" />
-                <span>Avoid bridge / railway routes?  </span>
+                <span>Avoid bridge / railway routes?</span>
               </label>
 
               <button type="button" className="redline-nearest-olt-button">
