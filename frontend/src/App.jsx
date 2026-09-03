@@ -910,7 +910,9 @@ export default function App() {
         {redlineSelectionResults.length > 0 && (
           <div className="redline-results-panel">
             <div className="redline-results-header-wrap">
-              <div className="redline-results-header">Selected ODNs</div>
+              <div className="redline-results-header">
+                Selected ODNs ({redlineSelectionResults.length})
+              </div>
               <button
                 type="button"
                 className="redline-results-close"
