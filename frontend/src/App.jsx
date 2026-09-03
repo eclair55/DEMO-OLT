@@ -13,7 +13,8 @@ import {
   Eye,
   EyeOff,
   Layers3,
-  Trash2
+  Trash2,
+  ChevronDown
 } from 'lucide-react';
 
 export default function App() {
@@ -54,6 +55,7 @@ export default function App() {
   const [redlineSelectionResults, setRedlineSelectionResults] = useState([]);
   const [streetNameCategories, setStreetNameCategories] = useState([]);
   const [excludedStreetNameCategories, setExcludedStreetNameCategories] = useState([]);
+  const [isStreetCategoryMenuOpen, setIsStreetCategoryMenuOpen] = useState(false);
   const [nearestFacilityResult, setNearestFacilityResult] = useState(null);
   const [restrictToProvince, setRestrictToProvince] = useState(false);
   const [isNearestFacilityLoading, setIsNearestFacilityLoading] = useState(false);
@@ -64,6 +66,7 @@ export default function App() {
   const [maxSnapDistance, setMaxSnapDistance] = useState(100);
   const [isShortestPathLoading, setIsShortestPathLoading] = useState(false);
   const shortestPathSelectionRef = useRef({ start: null, end: null });
+  const streetCategoryMenuRef = useRef(null);
 
   const blankProposedOlt = {
     CO_ID: '',
@@ -104,6 +107,17 @@ export default function App() {
 
     return () => window.clearTimeout(timer);
   }, [successMsg]);
+
+  useEffect(() => {
+    const handleDocumentClick = (event) => {
+      if (!streetCategoryMenuRef.current?.contains(event.target)) {
+        setIsStreetCategoryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, []);
 
   useEffect(() => {
     const loadGeoServerLayers = async () => {
@@ -608,6 +622,14 @@ export default function App() {
     setRedlineContextMenu({ x, y, geometryWkt });
   };
 
+  const toggleStreetNameCategory = (value) => {
+    setExcludedStreetNameCategories((current) => (
+      current.includes(value)
+        ? current.filter((category) => category !== value)
+        : [...current, value]
+    ));
+  };
+
   const handleRedlineSelectionSubmit = async () => {
     if (!redlineContextMenu?.geometryWkt) return;
     if (redlineFacilityTypes.length === 0) {
@@ -883,29 +905,41 @@ export default function App() {
                 />
                 <span>The analysis shall be conducted within the province boundary</span>
               </label>
-              <label className="redline-boundary-option">
-                <span>Avoid street categories</span>
-                <select
-                  className="redline-category-select"
-                  multiple
-                  value={excludedStreetNameCategories.map(String)}
-                  onChange={(event) => setExcludedStreetNameCategories(
-                    Array.from(event.target.selectedOptions, (option) => Number(option.value))
-                  )}
+              <div className="redline-category-dropdown" ref={streetCategoryMenuRef}>
+                <button
+                  type="button"
+                  className="redline-category-trigger"
+                  onClick={() => setIsStreetCategoryMenuOpen((open) => !open)}
                   disabled={streetNameCategories.length === 0}
-                  aria-label="Street categories to exclude"
+                  aria-expanded={isStreetCategoryMenuOpen}
+                  aria-haspopup="listbox"
                 >
-                  {streetNameCategories.map((category, index) => {
-                    const value = category.FIELD_VALUES ?? category.field_values;
-                    const label = category.FALIAS ?? category.falias ?? value;
-                    return (
-                      <option key={`${value}-${index}`} value={value}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-              </label>
+                  <span>
+                    {excludedStreetNameCategories.length > 0
+                      ? `${excludedStreetNameCategories.length} street categor${excludedStreetNameCategories.length === 1 ? 'y' : 'ies'} excluded`
+                      : 'Avoid street categories'}
+                  </span>
+                  <ChevronDown size={14} />
+                </button>
+                {isStreetCategoryMenuOpen && streetNameCategories.length > 0 && (
+                  <div className="redline-category-menu" role="listbox" aria-label="Street categories to exclude">
+                    {streetNameCategories.map((category, index) => {
+                      const value = Number(category.FIELD_VALUES ?? category.field_values);
+                      const label = category.FALIAS ?? category.falias ?? value;
+                      return (
+                        <label key={`${value}-${index}`} className="redline-category-option">
+                          <input
+                            type="checkbox"
+                            checked={excludedStreetNameCategories.includes(value)}
+                            onChange={() => toggleStreetNameCategory(value)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
               <button
                 type="button"

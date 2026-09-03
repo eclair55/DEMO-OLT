@@ -13,6 +13,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  user-select: none;
 }
 
 body {
@@ -21,6 +22,14 @@ body {
   background-color: #f8fafc;
   height: 100vh;
   overflow: hidden;
+  cursor: default;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  cursor: text;
 }
 
 #root {
@@ -499,16 +508,68 @@ body {
   height: 0.95rem;
 }
 
-.redline-category-select {
+.redline-category-dropdown {
+  position: relative;
   width: 100%;
-  min-height: 5rem;
+}
+
+.redline-category-trigger {
+  width: 100%;
+  min-height: 2.2rem;
   border: 1px solid #cbd5e1;
   border-radius: 6px;
   background: #ffffff;
   color: #334155;
   font: inherit;
   font-size: 0.75rem;
-  padding: 0.3rem;
+  padding: 0.45rem 0.55rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.redline-category-trigger:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.redline-category-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.3rem);
+  z-index: 35;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 0.35rem;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.18);
+}
+
+.redline-category-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.4rem;
+  color: #334155;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.redline-category-option:hover {
+  background: #f1f5f9;
+}
+
+.redline-category-option input {
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: 0;
+  accent-color: #2563eb;
 }
 
 .redline-nearest-olt-button {
