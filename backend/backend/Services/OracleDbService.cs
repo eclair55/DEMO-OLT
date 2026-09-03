@@ -243,7 +243,7 @@ public class OracleDbService : IOracleDbService
 
         var inClause = string.Join(", ", normalizedTypes.Select((_, index) => $":type{index}"));
         var sql = $@"
-            SELECT ODNC_FACILITY_ID, ODNC_ODN_CONT_ID, ODNC_CONT_TYPE
+            SELECT ODNC_FACILITY_ID, ODNC_ODN_CONT_ID, ODNC_CONT_TYPE,FEATID,'ODN_CONT_GEOM' AS TABLE_NAME
             FROM ODN_CONT_GEOM
             WHERE UPPER(ODNC_CONT_TYPE) IN ({inClause})
               AND SDO_RELATE(
@@ -275,6 +275,23 @@ public class OracleDbService : IOracleDbService
             _logger.LogError(ex, "Failed to select ODN records within redline geometry.");
             throw;
         }
+    }
+
+    public async Task<IEnumerable<Dictionary<string, object?>>> GetStreetNameCategoriesAsync()
+    {
+        if (!IsRealConnectionStringValid())
+        {
+            return Array.Empty<Dictionary<string, object?>>();
+        }
+
+        const string sql = @"
+            SELECT FIELD_VALUES, FALIAS
+            FROM DROPDOWN_MAINTENANCE
+            WHERE TABLENAME = 'STREET1_GEOM'
+              AND FIELDNAME = 'ST_NAME_CAT'
+            ORDER BY FALIAS ASC";
+
+        return await ExecuteQueryAsync(sql);
     }
 
     public static SpatialInsertDefaults GetSpatialInsertDefaults()

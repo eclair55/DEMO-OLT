@@ -173,6 +173,33 @@ public class OltNetworkController : ControllerBase
         }
     }
 
+    [HttpPost("nearest-selected-facility")]
+    public async Task<IActionResult> GetNearestSelectedFacility([FromBody] NearestSelectedFacilityRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new { message = "Request body is required." });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.SourceTableName) || request.SourceFacilityIds.Count == 0)
+        {
+            return BadRequest(new { message = "SourceTableName and SourceFacilityIds are required." });
+        }
+
+        try
+        {
+            var result = await _pdrMapService.GetNearestSelectedFacilityAsync(request);
+            return result == null
+                ? StatusCode(502, new { message = "Unable to fetch nearest selected facility results from the external PDR map service." })
+                : Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching nearest selected facility results from external service.");
+            return StatusCode(500, new { message = "Unable to find the nearest selected facility." });
+        }
+    }
+
     [HttpPost("redline/select-odn")]
     public async Task<IActionResult> SelectOdnWithinRedline([FromBody] RedlineSelectionRequest request)
     {
@@ -200,6 +227,20 @@ public class OltNetworkController : ControllerBase
         {
             _logger.LogError(ex, "Error selecting ODN records within redline.");
             return StatusCode(500, new { message = "Unable to select ODN records within the redline." });
+        }
+    }
+
+    [HttpGet("street-name-categories")]
+    public async Task<IActionResult> GetStreetNameCategories()
+    {
+        try
+        {
+            return Ok(await _dbService.GetStreetNameCategoriesAsync());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching street name categories.");
+            return StatusCode(500, new { message = "Unable to load street name categories." });
         }
     }
 

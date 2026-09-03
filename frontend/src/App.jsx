@@ -52,6 +52,11 @@ export default function App() {
   const [redlineContextMenu, setRedlineContextMenu] = useState(null);
   const [redlineFacilityTypes, setRedlineFacilityTypes] = useState(['LCP', 'NAP']);
   const [redlineSelectionResults, setRedlineSelectionResults] = useState([]);
+  const [streetNameCategories, setStreetNameCategories] = useState([]);
+  const [excludedStreetNameCategories, setExcludedStreetNameCategories] = useState([]);
+  const [nearestFacilityResult, setNearestFacilityResult] = useState(null);
+  const [restrictToProvince, setRestrictToProvince] = useState(false);
+  const [isNearestFacilityLoading, setIsNearestFacilityLoading] = useState(false);
 
   const [shortestPathMode, setShortestPathMode] = useState(false);
   const [shortestPathStart, setShortestPathStart] = useState(null);
@@ -128,6 +133,21 @@ export default function App() {
     };
 
     loadGeoServerLayers();
+  }, []);
+
+  useEffect(() => {
+    const loadStreetNameCategories = async () => {
+      try {
+        const response = await fetch('/api/street-name-categories');
+        if (!response.ok) throw new Error('Failed to load street name categories.');
+        const data = await response.json();
+        setStreetNameCategories(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.warn('Could not load street name categories.', error);
+      }
+    };
+
+    loadStreetNameCategories();
   }, []);
 
   // Expose global test hook for reliable Playwright testing
@@ -633,6 +653,71 @@ export default function App() {
     }
   };
 
+  const handleNearestSelectedFacility = async () => {
+    if (redlineSelectionResults.length === 0) return;
+
+    const sourceTableName = redlineSelectionResults[0].TABLE_NAME
+      ?? redlineSelectionResults[0].table_name
+      ?? '';
+    const sourceFacilityIds = redlineSelectionResults
+      .map((record) => record.FEATID ?? record.featid)
+      .filter((facilityId) => facilityId !== null && facilityId !== undefined && facilityId !== '')
+      .map(String);
+
+    if (!sourceTableName || sourceFacilityIds.length === 0) {
+      setErrorMsg('The selected ODN records do not contain TABLE_NAME and FEATID values.');
+      return;
+    }
+
+    setIsNearestFacilityLoading(true);
+    setLoadingMsg('Finding nearest homing OLT...');
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const response = await fetch('/api/nearest-selected-facility', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          SourceLayerId: 243,
+          SourceTableName: sourceTableName,
+          SourceFacilityIds: sourceFacilityIds,
+          DestinationLayerId: 1538,
+          DestinationTableName: 'OLT_GEOM',
+          RestrictToProvince: restrictToProvince,
+          ExcludedStreetNameCategories: excludedStreetNameCategories,
+          MaxSourceSnapDistance: 100,
+          MaxDestinationSnapDistance: 100
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to find the nearest homing OLT.');
+      }
+
+      const results = Array.isArray(data.Results) ? data.Results : (Array.isArray(data.results) ? data.results : []);
+      setNearestFacilityResult({ ...data, Results: results });
+      setRoutes((current) => [
+        ...current.filter((route) => route.__nearestSelectedFacility !== true),
+        ...results
+          .filter((item) => item.RouteWkt || item.routeWkt)
+          .map((item, index) => ({
+            WKT: item.RouteWkt ?? item.routeWkt,
+            routeNapId: `nearest-selected-facility-${index}`,
+            __nearestSelectedFacility: true,
+            Status: item.Status ?? item.status ?? 'OK'
+          }))
+      ]);
+      setSuccessMsg(data.Message || `Nearest homing OLT lookup completed for ${results.length} source record(s).`);
+    } catch (err) {
+      setErrorMsg(err.message || 'Unable to find the nearest homing OLT.');
+    } finally {
+      setIsNearestFacilityLoading(false);
+      setLoadingMsg('');
+    }
+  };
+
   // Map slots with click callback
   const decoratedSlots = parentSlots.map((slot) => ({
     ...slot,
@@ -791,18 +876,64 @@ export default function App() {
 
             <div className="redline-results-actions">
               <label className="redline-boundary-option">
-                <input type="checkbox" />
+                <input
+                  type="checkbox"
+                  checked={restrictToProvince}
+                  onChange={(event) => setRestrictToProvince(event.target.checked)}
+                />
                 <span>The analysis shall be conducted within the province boundary</span>
               </label>
               <label className="redline-boundary-option">
-                <input type="checkbox" />
-                <span>Avoid bridge / railway routes?</span>
+                <span>Avoid street categories</span>
+                <select
+                  className="redline-category-select"
+                  multiple
+                  value={excludedStreetNameCategories.map(String)}
+                  onChange={(event) => setExcludedStreetNameCategories(
+                    Array.from(event.target.selectedOptions, (option) => Number(option.value))
+                  )}
+                  disabled={streetNameCategories.length === 0}
+                  aria-label="Street categories to exclude"
+                >
+                  {streetNameCategories.map((category, index) => {
+                    const value = category.FIELD_VALUES ?? category.field_values;
+                    const label = category.FALIAS ?? category.falias ?? value;
+                    return (
+                      <option key={`${value}-${index}`} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </select>
               </label>
 
-              <button type="button" className="redline-nearest-olt-button">
-                Nearest Homing OLT
+              <button
+                type="button"
+                className="redline-nearest-olt-button"
+                onClick={handleNearestSelectedFacility}
+                disabled={isNearestFacilityLoading}
+              >
+                {isNearestFacilityLoading ? 'Finding nearest OLT...' : 'Nearest Homing OLT'}
               </button>
             </div>
+          </div>
+        )}
+
+        {nearestFacilityResult && (
+          <div className="redline-nearest-results-panel">
+            <div className="redline-results-header">Nearest Homing OLT Results</div>
+            <div className="redline-nearest-summary">
+              <span>{nearestFacilityResult.SuccessfulSourceCount ?? nearestFacilityResult.successfulSourceCount ?? 0} successful</span>
+              <span>{nearestFacilityResult.FailedSourceCount ?? nearestFacilityResult.failedSourceCount ?? 0} failed</span>
+            </div>
+            <ul className="redline-results-list">
+              {nearestFacilityResult.Results.map((item, index) => (
+                <li key={`${item.SourceFacilityId ?? item.sourceFacilityId ?? index}-${item.DestinationFacilityId ?? item.destinationFacilityId ?? 'none'}`}>
+                  <span>{item.SourceFacilityId ?? item.sourceFacilityId ?? 'Source'}</span>
+                  <span>{item.DestinationFacilityId ?? item.destinationFacilityId ?? item.Message ?? item.message ?? item.Status ?? item.status ?? 'N/A'}</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

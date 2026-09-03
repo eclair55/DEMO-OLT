@@ -8,4 +8,6 @@ public interface IPdrMapService
         double endX,
         double endY,
         double maxSnapDistance = 0);
+
+    Task<NearestSelectedFacilityResult?> GetNearestSelectedFacilityAsync(NearestSelectedFacilityRequest request);
 }

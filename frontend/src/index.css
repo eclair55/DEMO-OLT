@@ -499,6 +499,18 @@ body {
   height: 0.95rem;
 }
 
+.redline-category-select {
+  width: 100%;
+  min-height: 5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #334155;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0.3rem;
+}
+
 .redline-nearest-olt-button {
   border: 1px solid #2563eb;
   background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
@@ -519,6 +531,34 @@ body {
 
 .redline-nearest-olt-button:active {
   transform: translateY(0);
+}
+
+.redline-nearest-olt-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
+}
+
+.redline-nearest-results-panel {
+  position: absolute;
+  right: 16px;
+  bottom: 18px;
+  z-index: 23;
+  width: min(360px, calc(100vw - 32px));
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #dfe7f0;
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+  padding: 0.9rem;
+}
+
+.redline-nearest-summary {
+  display: flex;
+  gap: 0.8rem;
+  margin: 0.5rem 0 0.75rem;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .side-panel-toggle:hover {
