@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace OltNetworkApi.Services;
 
 public class ShortestPathRequest
@@ -74,10 +76,24 @@ public class NearestSelectedFacilityResult
 
 public class NearestSelectedFacilityItem
 {
+    [JsonPropertyName("ODNC_FACILITY_ID")]
+    public string? ODNC_FACILITY_ID { get; set; }
+    [JsonPropertyName("ODNC_ODN_CONT_ID")]
+    public string? ODNC_ODN_CONT_ID { get; set; }
+    [JsonPropertyName("ODNC_CONT_TYPE")]
+    public string? ODNC_CONT_TYPE { get; set; }
+    [JsonPropertyName("OLT_CODE")]
+    public string? OLT_CODE { get; set; }
+    [JsonPropertyName("OLT_NAME")]
+    public string? OLT_NAME { get; set; }
+    [JsonPropertyName("STATUS")]
+    public string? FacilityStatus { get; set; }
     public string? SourceFacilityId { get; set; }
     public string? DestinationFacilityId { get; set; }
+    [JsonPropertyName("distanceMeters")]
     public double DistanceMeters { get; set; }
     public string? RouteWkt { get; set; }
+    [JsonPropertyName("ResultStatus")]
     public string? Status { get; set; }
     public string? Message { get; set; }
     public string? ProvinceCode { get; set; }

@@ -439,6 +439,37 @@ textarea,
   letter-spacing: 0.08em;
 }
 
+.redline-results-window-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.redline-results-window-button {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+}
+
+.redline-results-window-button:hover {
+  background: #eef2ff;
+  color: #1e3a8a;
+  border-color: #c7d2fe;
+}
+
+.redline-results-window-button.close:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
 .redline-results-close {
   width: 26px;
   height: 26px;
@@ -482,6 +513,30 @@ textarea,
   border: 1px solid #e2e8f0;
   font-size: 0.75rem;
   color: #1e293b;
+}
+
+.redline-result-detail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.redline-result-detail span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.redline-result-detail strong {
+  color: #0f172a;
+  font-size: 0.7rem;
+}
+
+.redline-result-destination {
+  align-items: flex-end;
+  text-align: right;
+  color: #475569;
 }
 
 .redline-results-actions {
@@ -604,13 +659,18 @@ textarea,
   position: absolute;
   right: 16px;
   bottom: 18px;
-  z-index: 23;
+  z-index: 40;
   width: min(360px, calc(100vw - 32px));
   background: rgba(255, 255, 255, 0.98);
   border: 1px solid #dfe7f0;
   border-radius: 14px;
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
   padding: 0.9rem;
+}
+
+.redline-nearest-results-panel.minimized {
+  width: min(300px, calc(100vw - 32px));
+  padding: 0.55rem 0.7rem;
 }
 
 .redline-nearest-summary {

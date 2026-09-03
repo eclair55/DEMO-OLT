@@ -294,6 +294,32 @@ public class OracleDbService : IOracleDbService
         return await ExecuteQueryAsync(sql);
     }
 
+    public async Task<Dictionary<string, object?>?> GetOdnDetailsByFeatIdAsync(string featId)
+    {
+        const string sql = @"
+            SELECT ODNC_FACILITY_ID, ODNC_ODN_CONT_ID, ODNC_CONT_TYPE
+            FROM ODN_CONT_GEOM
+            WHERE FEATID = :sourceFacilityId";
+
+        var rows = await ExecuteQueryAsync(sql, new[] { new OracleParameter("sourceFacilityId", featId) });
+        return rows.FirstOrDefault();
+    }
+
+    public async Task<Dictionary<string, object?>?> GetOltDetailsByFeatIdAsync(string featId)
+    {
+        const string sql = @"
+            SELECT OLT_CODE, OLT_NAME, 'EXISTING' AS STATUS
+            FROM OLT_GEOM
+            WHERE FEATID = :destinationFacilityId
+            UNION ALL
+            SELECT OLT_CODE, OLT_NAME, 'PROPOSED' AS STATUS
+            FROM PROPOSED_OLT_GEOM
+            WHERE FEATID = :destinationFacilityId";
+
+        var rows = await ExecuteQueryAsync(sql, new[] { new OracleParameter("destinationFacilityId", featId) });
+        return rows.FirstOrDefault();
+    }
+
     public static SpatialInsertDefaults GetSpatialInsertDefaults()
     {
         var featId = DateTime.UtcNow.Ticks;

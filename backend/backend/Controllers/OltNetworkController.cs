@@ -189,15 +189,43 @@ public class OltNetworkController : ControllerBase
         try
         {
             var result = await _pdrMapService.GetNearestSelectedFacilityAsync(request);
-            return result == null
-                ? StatusCode(502, new { message = "Unable to fetch nearest selected facility results from the external PDR map service." })
-                : Ok(result);
+            if (result == null)
+            {
+                return StatusCode(502, new { message = "Unable to fetch nearest selected facility results from the external PDR map service." });
+            }
+
+            foreach (var item in result.Results)
+            {
+                if (!string.IsNullOrWhiteSpace(item.SourceFacilityId))
+                {
+                    var source = await _dbService.GetOdnDetailsByFeatIdAsync(item.SourceFacilityId);
+                    item.ODNC_FACILITY_ID = GetString(source, "ODNC_FACILITY_ID");
+                    item.ODNC_ODN_CONT_ID = GetString(source, "ODNC_ODN_CONT_ID");
+                    item.ODNC_CONT_TYPE = GetString(source, "ODNC_CONT_TYPE");
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.DestinationFacilityId))
+                {
+                    var destination = await _dbService.GetOltDetailsByFeatIdAsync(item.DestinationFacilityId);
+                    item.OLT_CODE = GetString(destination, "OLT_CODE");
+                    item.OLT_NAME = GetString(destination, "OLT_NAME");
+                    item.FacilityStatus = GetString(destination, "STATUS");
+                }
+
+            }
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error fetching nearest selected facility results from external service.");
             return StatusCode(500, new { message = "Unable to find the nearest selected facility." });
         }
+    }
+
+    private static string? GetString(Dictionary<string, object?>? values, string key)
+    {
+        return values != null && values.TryGetValue(key, out var value) ? value?.ToString() : null;
     }
 
     [HttpPost("redline/select-odn")]

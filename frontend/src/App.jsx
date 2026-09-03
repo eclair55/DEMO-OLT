@@ -14,7 +14,10 @@ import {
   EyeOff,
   Layers3,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Minimize2,
+  Maximize2,
+  Download
 } from 'lucide-react';
 
 export default function App() {
@@ -57,6 +60,7 @@ export default function App() {
   const [excludedStreetNameCategories, setExcludedStreetNameCategories] = useState([]);
   const [isStreetCategoryMenuOpen, setIsStreetCategoryMenuOpen] = useState(false);
   const [nearestFacilityResult, setNearestFacilityResult] = useState(null);
+  const [isNearestFacilityMinimized, setIsNearestFacilityMinimized] = useState(false);
   const [restrictToProvince, setRestrictToProvince] = useState(false);
   const [isNearestFacilityLoading, setIsNearestFacilityLoading] = useState(false);
 
@@ -630,6 +634,34 @@ export default function App() {
     ));
   };
 
+  const exportNearestFacilityResults = () => {
+    const results = nearestFacilityResult?.Results ?? nearestFacilityResult?.results ?? [];
+    if (results.length === 0) return;
+
+    const columns = [
+      ['ODNC_FACILITY_ID', 'ODNC_FACILITY_ID'],
+      ['ODNC_ODN_CONT_ID', 'ODNC_ODN_CONT_ID'],
+      ['ODNC_CONT_TYPE', 'ODNC_CONT_TYPE'],
+      ['OLT_CODE', 'OLT_CODE'],
+      ['OLT_NAME', 'OLT_NAME'],
+      ['STATUS', 'STATUS'],
+      ['distanceMeters', 'distanceMeters']
+    ];
+    const getValue = (item, key) => item[key] ?? item[key.charAt(0).toLowerCase() + key.slice(1)] ?? '';
+    const escapeCsv = (value) => `"${String(value).replaceAll('"', '""')}"`;
+    const csv = [
+      columns.map(([header]) => escapeCsv(header)).join(','),
+      ...results.map((item) => columns.map(([, key]) => escapeCsv(getValue(item, key))).join(','))
+    ].join('\r\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'nearest-homing-olt-results.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleRedlineSelectionSubmit = async () => {
     if (!redlineContextMenu?.geometryWkt) return;
     if (redlineFacilityTypes.length === 0) {
@@ -720,6 +752,7 @@ export default function App() {
 
       const results = Array.isArray(data.Results) ? data.Results : (Array.isArray(data.results) ? data.results : []);
       setNearestFacilityResult({ ...data, Results: results });
+      setIsNearestFacilityMinimized(false);
       setRoutes((current) => [
         ...current.filter((route) => route.__nearestSelectedFacility !== true),
         ...results
@@ -954,20 +987,67 @@ export default function App() {
         )}
 
         {nearestFacilityResult && (
-          <div className="redline-nearest-results-panel">
-            <div className="redline-results-header">Nearest Homing OLT Results</div>
-            <div className="redline-nearest-summary">
-              <span>{nearestFacilityResult.SuccessfulSourceCount ?? nearestFacilityResult.successfulSourceCount ?? 0} successful</span>
-              <span>{nearestFacilityResult.FailedSourceCount ?? nearestFacilityResult.failedSourceCount ?? 0} failed</span>
+          <div className={`redline-nearest-results-panel ${isNearestFacilityMinimized ? 'minimized' : ''}`}>
+            <div className="redline-results-header-wrap">
+              <div className="redline-results-header">Nearest Homing OLT Results</div>
+              <div className="redline-results-window-actions">
+                <button
+                  type="button"
+                  className="redline-results-window-button"
+                  aria-label="Export nearest homing OLT results to CSV"
+                  title="Export CSV"
+                  onClick={exportNearestFacilityResults}
+                >
+                  <Download size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="redline-results-window-button"
+                  aria-label={isNearestFacilityMinimized ? 'Expand nearest homing OLT results' : 'Minimize nearest homing OLT results'}
+                  title={isNearestFacilityMinimized ? 'Expand results' : 'Minimize results'}
+                  onClick={() => setIsNearestFacilityMinimized((minimized) => !minimized)}
+                >
+                  {isNearestFacilityMinimized ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+                </button>
+                <button
+                  type="button"
+                  className="redline-results-window-button close"
+                  aria-label="Close nearest homing OLT results"
+                  title="Close results"
+                  onClick={() => {
+                    setNearestFacilityResult(null);
+                    setRoutes((current) => current.filter((route) => route.__nearestSelectedFacility !== true));
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
-            <ul className="redline-results-list">
-              {nearestFacilityResult.Results.map((item, index) => (
-                <li key={`${item.SourceFacilityId ?? item.sourceFacilityId ?? index}-${item.DestinationFacilityId ?? item.destinationFacilityId ?? 'none'}`}>
-                  <span>{item.SourceFacilityId ?? item.sourceFacilityId ?? 'Source'}</span>
-                  <span>{item.DestinationFacilityId ?? item.destinationFacilityId ?? item.Message ?? item.message ?? item.Status ?? item.status ?? 'N/A'}</span>
-                </li>
-              ))}
-            </ul>
+            {!isNearestFacilityMinimized && (
+              <>
+                <div className="redline-nearest-summary">
+                  <span>{nearestFacilityResult.SuccessfulSourceCount ?? nearestFacilityResult.successfulSourceCount ?? 0} successful</span>
+                  <span>{nearestFacilityResult.FailedSourceCount ?? nearestFacilityResult.failedSourceCount ?? 0} failed</span>
+                </div>
+                <ul className="redline-results-list">
+                  {nearestFacilityResult.Results.map((item, index) => (
+                    <li key={`${item.SourceFacilityId ?? item.sourceFacilityId ?? index}-${item.DestinationFacilityId ?? item.destinationFacilityId ?? 'none'}`}>
+                      <div className="redline-result-detail">
+                        <strong>{item.ODNC_CONT_TYPE ?? item.odnc_cont_type ?? 'ODN'}</strong>
+                        <span>{item.ODNC_FACILITY_ID ?? item.odnc_facility_id ?? item.SourceFacilityId ?? item.sourceFacilityId ?? 'Source N/A'}</span>
+                        <span>{item.ODNC_ODN_CONT_ID ?? item.odnc_odn_cont_id ?? 'ODN ID N/A'}</span>
+                      </div>
+                      <div className="redline-result-detail redline-result-destination">
+                        <strong>{item.OLT_CODE ?? item.olt_CODE ?? 'OLT N/A'}</strong>
+                        <span>{item.OLT_NAME ?? item.olt_NAME ?? item.DestinationFacilityId ?? item.destinationFacilityId ?? 'Destination N/A'}</span>
+                        <span>{item.STATUS ?? item.status ?? item.FacilityStatus ?? item.facilityStatus ?? item.Status ?? 'Unknown'}</span>
+                        <span>{Number(item.distanceMeters ?? item.DistanceMeters ?? item.TotalAccessDistanceMeters ?? item.totalAccessDistanceMeters ?? 0).toFixed(2)} m access</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         )}
 
