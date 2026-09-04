@@ -22,6 +22,7 @@ import {
 
 export default function App() {
   const mapViewRef = useRef(null);
+  const nearestFacilityMapRenderLimit = 1500;
   // Config state
   const [srid, setSrid] = useState('32651');
 
@@ -676,8 +677,7 @@ export default function App() {
       : []
   });
 
-  const exportNearestFacilityResults = () => {
-    const results = nearestFacilityResult?.results ?? [];
+  const downloadNearestFacilityResults = (results) => {
     if (results.length === 0) return;
 
     const columns = [
@@ -718,6 +718,10 @@ export default function App() {
     link.download = 'odn-upload-template.csv';
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const exportNearestFacilityResults = () => {
+    downloadNearestFacilityResults(nearestFacilityResult?.results ?? []);
   };
 
   const parseCsvRows = (text) => {
@@ -857,10 +861,10 @@ export default function App() {
     const sourceTableName = redlineSelectionResults[0].TABLE_NAME
       ?? redlineSelectionResults[0].table_name
       ?? '';
-    const sourceFacilityIds = redlineSelectionResults
+    const sourceFacilityIds = Array.from(new Set(redlineSelectionResults
       .map((record) => record.FEATID ?? record.featid)
       .filter((facilityId) => facilityId !== null && facilityId !== undefined && facilityId !== '')
-      .map(String);
+      .map(String)));
 
     if (!sourceTableName || sourceFacilityIds.length === 0) {
       setErrorMsg('The selected ODN records do not contain TABLE_NAME and FEATID values.');
@@ -896,6 +900,19 @@ export default function App() {
 
       const nearestFacility = normalizeNearestFacilityResult(data);
       const { results } = nearestFacility;
+      const shouldExportOnly = sourceFacilityIds.length > nearestFacilityMapRenderLimit;
+
+      if (shouldExportOnly) {
+        setNearestFacilityResult(null);
+        setRoutes((current) => current.filter((route) => route.__nearestSelectedFacility !== true));
+        downloadNearestFacilityResults(results);
+        setSuccessMsg(
+          `Nearest homing OLT lookup completed for ${sourceFacilityIds.length} ODN records. `
+          + 'The CSV was downloaded and map rendering was skipped because the selection exceeds 1,500 records.'
+        );
+        return;
+      }
+
       setNearestFacilityResult(nearestFacility);
       setIsNearestFacilityMinimized(false);
       setRoutes((current) => [
