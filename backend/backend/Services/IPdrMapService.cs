@@ -9,5 +9,5 @@ public interface IPdrMapService
         double endY,
         double maxSnapDistance = 0);
 
-    Task<NearestSelectedFacilityResult?> GetNearestSelectedFacilityAsync(NearestSelectedFacilityRequest request);
+    Task<BulkSelectedFacilityResult?> GetNearestSelectedFacilityAsync(BulkSelectedFacilityRequest request);
 }

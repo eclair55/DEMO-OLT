@@ -174,7 +174,7 @@ public class OltNetworkController : ControllerBase
     }
 
     [HttpPost("nearest-selected-facility")]
-    public async Task<IActionResult> GetNearestSelectedFacility([FromBody] NearestSelectedFacilityRequest request)
+    public async Task<IActionResult> GetNearestSelectedFacility([FromBody] BulkSelectedFacilityRequest request)
     {
         if (request == null)
         {

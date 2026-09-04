@@ -634,24 +634,63 @@ export default function App() {
     ));
   };
 
+  // The bulk selected-facility endpoint uses camelCase JSON for its DTO fields,
+  // while the ODN/OLT fields are deliberately serialized with their database names.
+  // Keep that API-specific shape at this boundary and use one predictable shape below.
+  const getApiValue = (record, ...keys) => {
+    for (const key of keys) {
+      if (record?.[key] !== null && record?.[key] !== undefined) return record[key];
+    }
+    return undefined;
+  };
+
+  const normalizeNearestFacilityItem = (item) => {
+    const distance = Number(getApiValue(item, 'distanceMeters', 'DistanceMeters'));
+
+    return {
+      sourceFacilityId: getApiValue(item, 'sourceFacilityId', 'SourceFacilityId'),
+      destinationFacilityId: getApiValue(item, 'destinationFacilityId', 'DestinationFacilityId'),
+      odncFacilityId: getApiValue(item, 'ODNC_FACILITY_ID', 'odncFacilityId'),
+      odncOdnContId: getApiValue(item, 'ODNC_ODN_CONT_ID', 'odncOdnContId'),
+      odncContType: getApiValue(item, 'ODNC_CONT_TYPE', 'odncContType'),
+      oltCode: getApiValue(item, 'OLT_CODE', 'oltCode'),
+      oltName: getApiValue(item, 'OLT_NAME', 'oltName'),
+      facilityStatus: getApiValue(item, 'STATUS', 'facilityStatus', 'FacilityStatus'),
+      distanceMeters: Number.isFinite(distance) ? distance : null,
+      routeWkt: getApiValue(item, 'routeWkt', 'RouteWkt'),
+      status: getApiValue(item, 'status', 'Status'),
+      message: getApiValue(item, 'message', 'Message')
+    };
+  };
+
+  const normalizeNearestFacilityResult = (data) => ({
+    status: getApiValue(data, 'status', 'Status'),
+    message: getApiValue(data, 'message', 'Message'),
+    requestedSourceCount: getApiValue(data, 'requestedSourceCount', 'RequestedSourceCount') ?? 0,
+    successfulSourceCount: getApiValue(data, 'successfulSourceCount', 'SuccessfulSourceCount') ?? 0,
+    failedSourceCount: getApiValue(data, 'failedSourceCount', 'FailedSourceCount') ?? 0,
+    results: Array.isArray(getApiValue(data, 'results', 'Results'))
+      ? getApiValue(data, 'results', 'Results').map(normalizeNearestFacilityItem)
+      : []
+  });
+
   const exportNearestFacilityResults = () => {
-    const results = nearestFacilityResult?.Results ?? nearestFacilityResult?.results ?? [];
+    const results = nearestFacilityResult?.results ?? [];
     if (results.length === 0) return;
 
     const columns = [
-      ['ODNC_FACILITY_ID', 'ODNC_FACILITY_ID'],
-      ['ODNC_ODN_CONT_ID', 'ODNC_ODN_CONT_ID'],
-      ['ODNC_CONT_TYPE', 'ODNC_CONT_TYPE'],
-      ['OLT_CODE', 'OLT_CODE'],
-      ['OLT_NAME', 'OLT_NAME'],
-      ['STATUS', 'STATUS'],
+      ['ODNC_FACILITY_ID', 'odncFacilityId'],
+      ['ODNC_ODN_CONT_ID', 'odncOdnContId'],
+      ['ODNC_CONT_TYPE', 'odncContType'],
+      ['OLT_CODE', 'oltCode'],
+      ['OLT_NAME', 'oltName'],
+      ['STATUS', 'facilityStatus'],
       ['distanceMeters', 'distanceMeters']
     ];
-    const getValue = (item, key) => item[key] ?? item[key.charAt(0).toLowerCase() + key.slice(1)] ?? '';
     const escapeCsv = (value) => `"${String(value).replaceAll('"', '""')}"`;
     const csv = [
       columns.map(([header]) => escapeCsv(header)).join(','),
-      ...results.map((item) => columns.map(([, key]) => escapeCsv(getValue(item, key))).join(','))
+      ...results.map((item) => columns.map(([, key]) => escapeCsv(item[key] ?? '')).join(','))
     ].join('\r\n');
     const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -733,10 +772,10 @@ export default function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          SourceLayerId: 243,
+          SourceLayerId: 0,
           SourceTableName: sourceTableName,
           SourceFacilityIds: sourceFacilityIds,
-          DestinationLayerId: 1538,
+          DestinationLayerId: 0,
           DestinationTableName: 'OLT_GEOM',
           RestrictToProvince: restrictToProvince,
           ExcludedStreetNameCategories: excludedStreetNameCategories,
@@ -750,21 +789,22 @@ export default function App() {
         throw new Error(data.message || 'Unable to find the nearest homing OLT.');
       }
 
-      const results = Array.isArray(data.Results) ? data.Results : (Array.isArray(data.results) ? data.results : []);
-      setNearestFacilityResult({ ...data, Results: results });
+      const nearestFacility = normalizeNearestFacilityResult(data);
+      const { results } = nearestFacility;
+      setNearestFacilityResult(nearestFacility);
       setIsNearestFacilityMinimized(false);
       setRoutes((current) => [
         ...current.filter((route) => route.__nearestSelectedFacility !== true),
         ...results
-          .filter((item) => item.RouteWkt || item.routeWkt)
+          .filter((item) => item.routeWkt)
           .map((item, index) => ({
-            WKT: item.RouteWkt ?? item.routeWkt,
+            WKT: item.routeWkt,
             routeNapId: `nearest-selected-facility-${index}`,
             __nearestSelectedFacility: true,
-            Status: item.Status ?? item.status ?? 'OK'
+            Status: item.status ?? 'OK'
           }))
       ]);
-      setSuccessMsg(data.Message || `Nearest homing OLT lookup completed for ${results.length} source record(s).`);
+      setSuccessMsg(nearestFacility.message || `Nearest homing OLT lookup completed for ${results.length} source record(s).`);
     } catch (err) {
       setErrorMsg(err.message || 'Unable to find the nearest homing OLT.');
     } finally {
@@ -1028,22 +1068,22 @@ export default function App() {
             {!isNearestFacilityMinimized && (
               <>
                 <div className="redline-nearest-summary">
-                  <span>{nearestFacilityResult.SuccessfulSourceCount ?? nearestFacilityResult.successfulSourceCount ?? 0} successful</span>
-                  <span>{nearestFacilityResult.FailedSourceCount ?? nearestFacilityResult.failedSourceCount ?? 0} failed</span>
+                  <span>{nearestFacilityResult.successfulSourceCount} successful</span>
+                  <span>{nearestFacilityResult.failedSourceCount} failed</span>
                 </div>
                 <ul className="redline-results-list">
-                  {nearestFacilityResult.Results.map((item, index) => (
-                    <li key={`${item.SourceFacilityId ?? item.sourceFacilityId ?? index}-${item.DestinationFacilityId ?? item.destinationFacilityId ?? 'none'}`}>
+                  {nearestFacilityResult.results.map((item, index) => (
+                    <li key={`${item.sourceFacilityId ?? index}-${item.destinationFacilityId ?? 'none'}`}>
                       <div className="redline-result-detail">
-                        <strong>{item.ODNC_CONT_TYPE ?? item.odnc_cont_type ?? 'ODN'}</strong>
-                        <span>{item.ODNC_FACILITY_ID ?? item.odnc_facility_id ?? item.SourceFacilityId ?? item.sourceFacilityId ?? 'Source N/A'}</span>
-                        <span>{item.ODNC_ODN_CONT_ID ?? item.odnc_odn_cont_id ?? 'ODN ID N/A'}</span>
+                        <strong>{item.odncContType ?? 'ODN'}</strong>
+                        <span>{item.odncFacilityId ?? item.sourceFacilityId ?? 'Source N/A'}</span>
+                        <span>{item.odncOdnContId ?? 'ODN ID N/A'}</span>
                       </div>
                       <div className="redline-result-detail redline-result-destination">
-                        <strong>{item.OLT_CODE ?? item.olt_CODE ?? 'OLT N/A'}</strong>
-                        <span>{item.OLT_NAME ?? item.olt_NAME ?? item.DestinationFacilityId ?? item.destinationFacilityId ?? 'Destination N/A'}</span>
-                        <span>{item.STATUS ?? item.status ?? item.FacilityStatus ?? item.facilityStatus ?? item.Status ?? 'Unknown'}</span>
-                        <span>{Number(item.distanceMeters ?? item.DistanceMeters ?? item.TotalAccessDistanceMeters ?? item.totalAccessDistanceMeters ?? 0).toFixed(2)} m access</span>
+                        <strong>{item.oltCode ?? 'OLT N/A'}</strong>
+                        <span>{item.oltName ?? item.destinationFacilityId ?? 'Destination N/A'}</span>
+                        <span>{item.facilityStatus ?? item.status ?? 'Unknown'}</span>
+                        <span>{item.distanceMeters?.toFixed(2) ?? 'N/A'} m access</span>
                       </div>
                     </li>
                   ))}

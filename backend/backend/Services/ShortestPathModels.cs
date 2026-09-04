@@ -1,3 +1,4 @@
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace OltNetworkApi.Services;
@@ -86,7 +87,6 @@ public class NearestSelectedFacilityItem
     public string? OLT_CODE { get; set; }
     [JsonPropertyName("OLT_NAME")]
     public string? OLT_NAME { get; set; }
-    [JsonPropertyName("STATUS")]
     public string? FacilityStatus { get; set; }
     public string? SourceFacilityId { get; set; }
     public string? DestinationFacilityId { get; set; }
@@ -116,4 +116,174 @@ public class NearestSelectedFacilityItem
     public int LoadedNodeCount { get; set; }
     public int LoadedEdgeCount { get; set; }
     public List<long> EdgeIds { get; set; } = new();
+}
+
+
+public sealed class BulkSelectedFacilityResult
+{
+    public BulkSelectedFacilityResult()
+    {
+        ExcludedStreetNameCategories = new List<int>();
+        Results = new List<BulkSelectedFacilityItem>();
+        Diagnostics = new BulkSelectedFacilityDiagnostics();
+    }
+
+    public string Status { get; set; }
+
+
+    public string Message { get; set; }
+
+
+    public string SourceTableName { get; set; }
+
+    public string DestinationTableName { get; set; }
+
+
+    public bool RestrictToProvince { get; set; }
+
+
+    public List<int> ExcludedStreetNameCategories { get; set; }
+
+    public int RequestedSourceCount { get; set; }
+
+
+    public int SuccessfulSourceCount { get; set; }
+
+
+    public int FailedSourceCount { get; set; }
+
+    public int NetworkSrid { get; set; }
+
+
+    public long NetworkRevision { get; set; }
+
+
+    public List<BulkSelectedFacilityItem> Results { get; set; }
+
+
+    public BulkSelectedFacilityDiagnostics Diagnostics { get; set; }
+}
+
+
+public sealed class BulkSelectedFacilityItem
+{
+    [JsonPropertyName("ODNC_FACILITY_ID")]
+    public string? ODNC_FACILITY_ID { get; set; }
+    [JsonPropertyName("ODNC_ODN_CONT_ID")]
+    public string? ODNC_ODN_CONT_ID { get; set; }
+    [JsonPropertyName("ODNC_CONT_TYPE")]
+    public string? ODNC_CONT_TYPE { get; set; }
+    [JsonPropertyName("OLT_CODE")]
+    public string? OLT_CODE { get; set; }
+    [JsonPropertyName("OLT_NAME")]
+    public string? OLT_NAME { get; set; }
+    [JsonPropertyName("FacilityStatus")]
+    public string? FacilityStatus { get; set; }
+    public string SourceFacilityId { get; set; }
+    public string DestinationFacilityId { get; set; }
+    public double? DistanceMeters { get; set; }
+    public string RouteWkt { get; set; }
+    public string Status { get; set; }
+    public string Message { get; set; }
+}
+
+public sealed class BulkSelectedFacilityDiagnostics
+{
+    public string CorrelationId { get; set; }
+    public long TotalMilliseconds { get; set; }
+    public long SourceFacilityLoadingMilliseconds { get; set; }
+    public long SourceSnappingMilliseconds { get; set; }
+    public long DestinationCandidateLoadingMilliseconds { get; set; }
+    public long RoutingNetworkLoadingMilliseconds { get; set; }
+    public long DijkstraMilliseconds { get; set; }
+    public long RouteGeometryMilliseconds { get; set; }
+
+    public long DatabaseMilliseconds { get; set; }
+
+    public int SourceFacilityQueryCount { get; set; }
+
+
+    public int SourceSnapTileQueryCount { get; set; }
+
+
+    public int DestinationCandidateQueryCount { get; set; }
+
+    public int DestinationCandidatesLoaded { get; set; }
+
+    public int DestinationSnapTileQueryCount { get; set; }
+
+    public int TopologyLoadCount { get; set; }
+
+
+    public int TopologyCacheHitCount { get; set; }
+
+    public int TopologyCacheMissCount { get; set; }
+
+
+    public int AdjacencyBuildCount { get; set; }
+
+
+    public int DijkstraSearchCount { get; set; }
+
+    public int RouteGeometryQueryCount { get; set; }
+
+
+    public int UniqueRoutingEdgesLoaded { get; set; }
+
+
+    public int SourceSnapFallbackQueryCount { get; set; }
+
+    public int DestinationSnapFallbackQueryCount { get; set; }
+
+    public int SpatialSourceGroupCount { get; set; }
+
+    public int ProvinceMetadataQueryCount { get; set; }
+
+    public bool UniqueRoutingEdgeCountIsLowerBound { get; set; }
+
+    public long DestinationSnappingMilliseconds { get; set; }
+
+
+    public long AdjacencyBuildingMilliseconds { get; set; }
+
+    public long TopologyEdgeRowsLoaded { get; set; }
+
+    public long TopologyDuplicateEdgeRows { get; set; }
+
+
+    public int ProvinceTopologyPreloadCount { get; set; }
+
+    public int ProvinceTopologyPreloadFallbackCount { get; set; }
+
+    public int DestinationCandidateCacheHitCount { get; set; }
+}
+
+
+public sealed class BulkSelectedFacilityRequest
+{
+    public BulkSelectedFacilityRequest()
+    {
+        SourceFacilityIds = new List<string>();
+        ExcludedStreetNameCategories = new List<int>();
+    }
+
+    public int SourceLayerId { get; set; }
+
+    public string SourceTableName { get; set; }
+
+    public List<string> SourceFacilityIds { get; set; }
+
+
+    public int DestinationLayerId { get; set; }
+
+    public string DestinationTableName { get; set; }
+
+    public bool RestrictToProvince { get; set; }
+
+
+    public List<int> ExcludedStreetNameCategories { get; set; }
+
+    public double MaxSourceSnapDistance { get; set; }
+
+    public double MaxDestinationSnapDistance { get; set; }
 }

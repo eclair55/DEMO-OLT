@@ -103,15 +103,15 @@ public class PdrMapService : IPdrMapService
         return null;
     }
 
-    public async Task<NearestSelectedFacilityResult?> GetNearestSelectedFacilityAsync(NearestSelectedFacilityRequest request)
+    public async Task<BulkSelectedFacilityResult?> GetNearestSelectedFacilityAsync(BulkSelectedFacilityRequest request)
     {
         var body = BuildNearestSelectedFacilitySoapBody(request);
         var actions = new[]
         {
-            "http://tempuri.org/IPDRMap/GetNearestSelectedFacility",
-            "http://tempuri.org/GetNearestSelectedFacility",
-            "PDRMap/GetNearestSelectedFacility",
-            "GetNearestSelectedFacility"
+            "http://tempuri.org/IPDRMap/GetBulkSelectedFacilityRoutes",
+            "http://tempuri.org/GetBulkSelectedFacilityRoutes",
+            "PDRMap/GetBulkSelectedFacilityRoutes",
+            "GetBulkSelectedFacilityRoutes"
         };
 
         foreach (var action in actions)
@@ -134,14 +134,14 @@ public class PdrMapService : IPdrMapService
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Attempt to call GetNearestSelectedFacility with SOAPAction {SoapAction} failed.", action);
+                _logger.LogWarning(ex, "Attempt to call GetBulkSelectedFacilityRoutes with SOAPAction {SoapAction} failed.", action);
             }
         }
 
         return null;
     }
 
-    private static string BuildNearestSelectedFacilitySoapBody(NearestSelectedFacilityRequest request)
+    private static string BuildNearestSelectedFacilitySoapBody(BulkSelectedFacilityRequest request)
     {
         var sourceIds = string.Join("", request.SourceFacilityIds.Select(id => $"<arr:string>{System.Security.SecurityElement.Escape(id)}</arr:string>"));
         var excludedCategories = string.Join("", request.ExcludedStreetNameCategories.Select(category => $"<arr:int>{category}</arr:int>"));
@@ -149,7 +149,7 @@ public class PdrMapService : IPdrMapService
         return $@"<?xml version=""1.0"" encoding=""utf-8""?>
     <s:Envelope xmlns:s=""http://schemas.xmlsoap.org/soap/envelope/"" xmlns:tem=""http://tempuri.org/"" xmlns:pdr=""http://schemas.datacontract.org/2004/07/PDRMapSvc.Models"" xmlns:arr=""http://schemas.microsoft.com/2003/10/Serialization/Arrays"">
   <s:Body>
-    <tem:GetNearestSelectedFacility>
+    <tem:GetBulkSelectedFacilityRoutes>
       <tem:request>
         <pdr:SourceLayerId>{request.SourceLayerId}</pdr:SourceLayerId>
         <pdr:SourceTableName>{System.Security.SecurityElement.Escape(request.SourceTableName ?? string.Empty)}</pdr:SourceTableName>
@@ -161,22 +161,22 @@ public class PdrMapService : IPdrMapService
         <pdr:MaxSourceSnapDistance>{request.MaxSourceSnapDistance.ToString(CultureInfo.InvariantCulture)}</pdr:MaxSourceSnapDistance>
         <pdr:MaxDestinationSnapDistance>{request.MaxDestinationSnapDistance.ToString(CultureInfo.InvariantCulture)}</pdr:MaxDestinationSnapDistance>
       </tem:request>
-    </tem:GetNearestSelectedFacility>
+    </tem:GetBulkSelectedFacilityRoutes>
   </s:Body>
 </s:Envelope>";
     }
 
-    private static NearestSelectedFacilityResult? ParseNearestSelectedFacilityResult(string xml)
+    private static BulkSelectedFacilityResult? ParseNearestSelectedFacilityResult(string xml)
     {
         try
         {
             var doc = XDocument.Parse(xml);
             var resultElement = doc.Descendants().FirstOrDefault(element =>
-                element.Name.LocalName.Equals("NearestSelectedFacilityResult", StringComparison.OrdinalIgnoreCase) ||
-                element.Name.LocalName.Equals("GetNearestSelectedFacilityResult", StringComparison.OrdinalIgnoreCase));
+                element.Name.LocalName.Equals("BulkSelectedFacilityResult", StringComparison.OrdinalIgnoreCase) ||
+                element.Name.LocalName.Equals("GetBulkSelectedFacilityRoutesResult", StringComparison.OrdinalIgnoreCase));
             if (resultElement == null) return null;
 
-            var result = new NearestSelectedFacilityResult();
+            var result = new BulkSelectedFacilityResult();
             foreach (var element in resultElement.Elements())
             {
                 switch (element.Name.LocalName)
@@ -192,7 +192,7 @@ public class PdrMapService : IPdrMapService
                     case "NetworkSrid": result.NetworkSrid = ParseInt32(element.Value); break;
                     case "NetworkRevision": result.NetworkRevision = ParseInt64(element.Value); break;
                     case "Results":
-                        result.Results = element.Descendants().Where(item => item.Name.LocalName.Equals("NearestSelectedFacilityItem", StringComparison.OrdinalIgnoreCase)).Select(ParseNearestItem).ToList();
+                        result.Results = element.Descendants().Where(item => item.Name.LocalName.Equals("BulkSelectedFacilityItem", StringComparison.OrdinalIgnoreCase)).Select(ParseNearestItem).ToList();
                         break;
                 }
             }
@@ -204,9 +204,9 @@ public class PdrMapService : IPdrMapService
         }
     }
 
-    private static NearestSelectedFacilityItem ParseNearestItem(XElement element)
+    private static BulkSelectedFacilityItem ParseNearestItem(XElement element)
     {
-        var item = new NearestSelectedFacilityItem();
+        var item = new BulkSelectedFacilityItem();
         foreach (var child in element.Elements())
         {
             switch (child.Name.LocalName)
@@ -217,26 +217,26 @@ public class PdrMapService : IPdrMapService
                 case "RouteWkt": case "RouteWKT": item.RouteWkt = child.Value; break;
                 case "Status": item.Status = child.Value; break;
                 case "Message": item.Message = child.Value; break;
-                case "ProvinceCode": item.ProvinceCode = child.Value; break;
-                case "SourceX": item.SourceX = ParseDouble(child.Value); break;
-                case "SourceY": item.SourceY = ParseDouble(child.Value); break;
-                case "SnappedSourceX": item.SnappedSourceX = ParseDouble(child.Value); break;
-                case "SnappedSourceY": item.SnappedSourceY = ParseDouble(child.Value); break;
-                case "DestinationX": item.DestinationX = ParseDouble(child.Value); break;
-                case "DestinationY": item.DestinationY = ParseDouble(child.Value); break;
-                case "SnappedDestinationX": item.SnappedDestinationX = ParseDouble(child.Value); break;
-                case "SnappedDestinationY": item.SnappedDestinationY = ParseDouble(child.Value); break;
-                case "SourceSnapDistanceMeters": item.SourceSnapDistanceMeters = ParseDouble(child.Value); break;
-                case "DestinationSnapDistanceMeters": item.DestinationSnapDistanceMeters = ParseDouble(child.Value); break;
-                case "TotalAccessDistanceMeters": item.TotalAccessDistanceMeters = ParseDouble(child.Value); break;
-                case "SourceEdgeId": item.SourceEdgeId = ParseInt64(child.Value); break;
-                case "DestinationEdgeId": item.DestinationEdgeId = ParseInt64(child.Value); break;
-                case "CandidateCount": item.CandidateCount = ParseInt32(child.Value); break;
-                case "SnappableCandidateCount": item.SnappableCandidateCount = ParseInt32(child.Value); break;
-                case "SearchAttemptCount": item.SearchAttemptCount = ParseInt32(child.Value); break;
-                case "LoadedNodeCount": item.LoadedNodeCount = ParseInt32(child.Value); break;
-                case "LoadedEdgeCount": item.LoadedEdgeCount = ParseInt32(child.Value); break;
-                case "EdgeIds": item.EdgeIds = child.Descendants().Where(id => id.Name.LocalName.Equals("long", StringComparison.OrdinalIgnoreCase)).Select(id => ParseInt64(id.Value)).ToList(); break;
+                //case "ProvinceCode": item.ProvinceCode = child.Value; break;
+                //case "SourceX": item.SourceX = ParseDouble(child.Value); break;
+                //case "SourceY": item.SourceY = ParseDouble(child.Value); break;
+                //case "SnappedSourceX": item.SnappedSourceX = ParseDouble(child.Value); break;
+                //case "SnappedSourceY": item.SnappedSourceY = ParseDouble(child.Value); break;
+                //case "DestinationX": item.DestinationX = ParseDouble(child.Value); break;
+                //case "DestinationY": item.DestinationY = ParseDouble(child.Value); break;
+                //case "SnappedDestinationX": item.SnappedDestinationX = ParseDouble(child.Value); break;
+                //case "SnappedDestinationY": item.SnappedDestinationY = ParseDouble(child.Value); break;
+                //case "SourceSnapDistanceMeters": item.SourceSnapDistanceMeters = ParseDouble(child.Value); break;
+                //case "DestinationSnapDistanceMeters": item.DestinationSnapDistanceMeters = ParseDouble(child.Value); break;
+                //case "TotalAccessDistanceMeters": item.TotalAccessDistanceMeters = ParseDouble(child.Value); break;
+                //case "SourceEdgeId": item.SourceEdgeId = ParseInt64(child.Value); break;
+                //case "DestinationEdgeId": item.DestinationEdgeId = ParseInt64(child.Value); break;
+                //case "CandidateCount": item.CandidateCount = ParseInt32(child.Value); break;
+                //case "SnappableCandidateCount": item.SnappableCandidateCount = ParseInt32(child.Value); break;
+                //case "SearchAttemptCount": item.SearchAttemptCount = ParseInt32(child.Value); break;
+                //case "LoadedNodeCount": item.LoadedNodeCount = ParseInt32(child.Value); break;
+                //case "LoadedEdgeCount": item.LoadedEdgeCount = ParseInt32(child.Value); break;
+                //case "EdgeIds": item.EdgeIds = child.Descendants().Where(id => id.Name.LocalName.Equals("long", StringComparison.OrdinalIgnoreCase)).Select(id => ParseInt64(id.Value)).ToList(); break;
             }
         }
         return item;
