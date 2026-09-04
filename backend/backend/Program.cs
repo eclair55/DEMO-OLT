@@ -6,8 +6,19 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddRequestTimeouts(options =>
+{
+    options.DefaultPolicy = new()
+    {
+        Timeout = PdrMapService.ApiTimeout
+    };
+});
+
 builder.Services.AddScoped<IOracleDbService, OracleDbService>();
-builder.Services.AddHttpClient<IPdrMapService, PdrMapService>();
+builder.Services.AddHttpClient<IPdrMapService, PdrMapService>(client =>
+{
+    client.Timeout = PdrMapService.ApiTimeout;
+});
 
 builder.Services.AddCors(options =>
 {
@@ -25,6 +36,8 @@ app.UseCors("AllowFrontend");
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.UseRequestTimeouts();
 
 app.UseAuthorization();
 

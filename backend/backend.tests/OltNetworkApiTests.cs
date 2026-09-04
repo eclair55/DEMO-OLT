@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Logging.Abstractions;
 using OltNetworkApi.Services;
 using Xunit;
 
@@ -14,6 +15,19 @@ public class OltNetworkApiTests : IClassFixture<WebApplicationFactory<Program>>
     public OltNetworkApiTests(WebApplicationFactory<Program> factory)
     {
         _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public void PdrMapService_UsesTenMinuteApiTimeout()
+    {
+        using var httpClient = new HttpClient
+        {
+            Timeout = PdrMapService.ApiTimeout
+        };
+
+        _ = new PdrMapService(httpClient, NullLogger<PdrMapService>.Instance);
+
+        Assert.Equal(TimeSpan.FromMinutes(10), httpClient.Timeout);
     }
 
     [Fact]

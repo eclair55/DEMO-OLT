@@ -7,6 +7,8 @@ namespace OltNetworkApi.Services;
 
 public class PdrMapService : IPdrMapService
 {
+    public static readonly TimeSpan ApiTimeout = TimeSpan.FromMinutes(10);
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<PdrMapService> _logger;
 
@@ -18,7 +20,6 @@ public class PdrMapService : IPdrMapService
         _logger = logger;
 
         _httpClient.BaseAddress = new Uri(ServiceUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
         _httpClient.DefaultRequestHeaders.Accept.Clear();
         _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/xml"));
     }
