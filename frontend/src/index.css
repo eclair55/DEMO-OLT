@@ -681,6 +681,69 @@ textarea,
   padding: 0.55rem 0.7rem;
 }
 
+.odn-upload-panel {
+  width: 100%;
+  padding: 0.85rem;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.odn-upload-title {
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.odn-upload-panel p,
+.odn-upload-panel small {
+  display: block;
+  color: #64748b;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+
+.odn-upload-panel p {
+  margin-top: 0.25rem;
+}
+
+.odn-upload-actions {
+  display: flex;
+  gap: 0.45rem;
+  margin: 0.7rem 0 0.55rem;
+}
+
+.odn-upload-actions button {
+  flex: 1;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.48rem 0.45rem;
+}
+
+.odn-upload-actions button:hover {
+  background: #dbeafe;
+}
+
+.odn-upload-actions .odn-upload-primary {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.odn-upload-actions .odn-upload-primary:hover {
+  background: #1d4ed8;
+}
+
+.odn-upload-input {
+  display: none;
+}
+
 .redline-nearest-summary {
   display: flex;
   gap: 0.8rem;
@@ -1463,6 +1526,48 @@ textarea,
 .modal-body {
   padding: 1.25rem;
   overflow-y: auto;
+}
+
+.nearest-facility-close-modal {
+  max-width: 440px;
+}
+
+.nearest-facility-close-modal .modal-body p {
+  line-height: 1.5;
+}
+
+.nearest-facility-close-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.nearest-facility-close-actions button {
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0.55rem 0.85rem;
+}
+
+.nearest-facility-close-cancel {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
+.nearest-facility-close-confirm {
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  color: #ffffff;
+}
+
+.nearest-facility-close-cancel:hover {
+  background: #f8fafc;
+}
+
+.nearest-facility-close-confirm:hover {
+  background: #b91c1c;
 }
 
 .modal-table {

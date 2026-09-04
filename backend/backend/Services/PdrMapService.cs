@@ -108,10 +108,10 @@ public class PdrMapService : IPdrMapService
         var body = BuildNearestSelectedFacilitySoapBody(request);
         var actions = new[]
         {
-            "http://tempuri.org/IPDRMap/GetBulkSelectedFacilityRoutes",
-            "http://tempuri.org/GetBulkSelectedFacilityRoutes",
-            "PDRMap/GetBulkSelectedFacilityRoutes",
-            "GetBulkSelectedFacilityRoutes"
+            "http://tempuri.org/IPDRMap/GetBulkSelectedFacilityRoutes"//,
+            //"http://tempuri.org/GetBulkSelectedFacilityRoutes",
+            //"PDRMap/GetBulkSelectedFacilityRoutes",
+            //"GetBulkSelectedFacilityRoutes"
         };
 
         foreach (var action in actions)

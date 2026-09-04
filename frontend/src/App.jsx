@@ -61,6 +61,8 @@ export default function App() {
   const [isStreetCategoryMenuOpen, setIsStreetCategoryMenuOpen] = useState(false);
   const [nearestFacilityResult, setNearestFacilityResult] = useState(null);
   const [isNearestFacilityMinimized, setIsNearestFacilityMinimized] = useState(false);
+  const [isNearestFacilityCloseConfirmOpen, setIsNearestFacilityCloseConfirmOpen] = useState(false);
+  const odnUploadInputRef = useRef(null);
   const [restrictToProvince, setRestrictToProvince] = useState(false);
   const [isNearestFacilityLoading, setIsNearestFacilityLoading] = useState(false);
 
@@ -701,6 +703,109 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleConfirmCloseNearestFacilityResults = () => {
+    setNearestFacilityResult(null);
+    setRoutes((current) => current.filter((route) => route.__nearestSelectedFacility !== true));
+    setIsNearestFacilityCloseConfirmOpen(false);
+  };
+
+  const downloadOdnUploadTemplate = () => {
+    const csv = 'FEATID,ODNC_CONT_TYPE,ODNC_FACILITY_ID,ODNC_ODN_CONT_ID\r\n';
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'odn-upload-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseCsvRows = (text) => {
+    const rows = [];
+    let row = [];
+    let value = '';
+    let isQuoted = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const character = text[index];
+      if (character === '"') {
+        if (isQuoted && text[index + 1] === '"') {
+          value += '"';
+          index += 1;
+        } else {
+          isQuoted = !isQuoted;
+        }
+      } else if (character === ',' && !isQuoted) {
+        row.push(value.trim());
+        value = '';
+      } else if ((character === '\n' || character === '\r') && !isQuoted) {
+        if (character === '\r' && text[index + 1] === '\n') index += 1;
+        row.push(value.trim());
+        if (row.some((cell) => cell !== '')) rows.push(row);
+        row = [];
+        value = '';
+      } else {
+        value += character;
+      }
+    }
+
+    row.push(value.trim());
+    if (row.some((cell) => cell !== '')) rows.push(row);
+    return rows;
+  };
+
+  const handleOdnUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      const rows = parseCsvRows(await file.text());
+      if (rows.length < 2) throw new Error('The CSV must include a header row and at least one ODN row.');
+
+      const headers = rows[0].map((header) => header.replace(/^\uFEFF/, '').trim().toUpperCase());
+      const requiredHeaders = ['FEATID', 'ODNC_CONT_TYPE', 'ODNC_FACILITY_ID'];
+      const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
+      if (missingHeaders.length > 0) {
+        throw new Error(`Missing required CSV column(s): ${missingHeaders.join(', ')}.`);
+      }
+
+      const invalidRows = [];
+      const uploadedRecords = rows.slice(1).flatMap((row, rowIndex) => {
+        const record = Object.fromEntries(headers.map((header, index) => [header, row[index] ?? '']));
+        const isValid = requiredHeaders.every((header) => record[header]?.trim());
+        if (!isValid) {
+          invalidRows.push(rowIndex + 2);
+          return [];
+        }
+
+        return [{
+          FEATID: record.FEATID.trim(),
+          ODNC_CONT_TYPE: record.ODNC_CONT_TYPE.trim(),
+          ODNC_FACILITY_ID: record.ODNC_FACILITY_ID.trim(),
+          ODNC_ODN_CONT_ID: (record.ODNC_ODN_CONT_ID ?? '').trim(),
+          TABLE_NAME: 'ODN_CONT_GEOM',
+          __uploaded: true
+        }];
+      });
+
+      if (uploadedRecords.length === 0) {
+        throw new Error('No valid ODN rows were found. FEATID, ODNC_CONT_TYPE, and ODNC_FACILITY_ID are required.');
+      }
+
+      const uniqueRecords = Array.from(new Map(uploadedRecords.map((record) => [record.FEATID, record])).values());
+      setRedlineSelectionResults(uniqueRecords);
+      setNearestFacilityResult(null);
+      setRoutes((current) => current.filter((route) => route.__nearestSelectedFacility !== true));
+      setErrorMsg(invalidRows.length > 0
+        ? `${invalidRows.length} invalid row(s) were skipped: ${invalidRows.join(', ')}.`
+        : null);
+      setSuccessMsg(`${uniqueRecords.length} uploaded ODN record(s) are ready for nearest homing OLT trace.`);
+    } catch (error) {
+      setErrorMsg(error.message || 'Unable to read the ODN CSV file.');
+    }
+  };
+
   const handleRedlineSelectionSubmit = async () => {
     if (!redlineContextMenu?.geometryWkt) return;
     if (redlineFacilityTypes.length === 0) {
@@ -1056,10 +1161,7 @@ export default function App() {
                   className="redline-results-window-button close"
                   aria-label="Close nearest homing OLT results"
                   title="Close results"
-                  onClick={() => {
-                    setNearestFacilityResult(null);
-                    setRoutes((current) => current.filter((route) => route.__nearestSelectedFacility !== true));
-                  }}
+                  onClick={() => setIsNearestFacilityCloseConfirmOpen(true)}
                 >
                   ✕
                 </button>
@@ -1090,6 +1192,40 @@ export default function App() {
                 </ul>
               </>
             )}
+          </div>
+        )}
+
+        {isNearestFacilityCloseConfirmOpen && (
+          <div className="modal-overlay" role="presentation">
+            <section
+              className="modal-card nearest-facility-close-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="nearest-facility-close-title"
+            >
+              <div className="modal-header">
+                <div id="nearest-facility-close-title" className="modal-title">Close Homing OLT Results?</div>
+              </div>
+              <div className="modal-body">
+                <p>Have you completed the necessary extract? Closing will remove the Homing OLT results and routes from the map.</p>
+                <div className="nearest-facility-close-actions">
+                  <button
+                    type="button"
+                    className="nearest-facility-close-cancel"
+                    onClick={() => setIsNearestFacilityCloseConfirmOpen(false)}
+                  >
+                    Keep results
+                  </button>
+                  <button
+                    type="button"
+                    className="nearest-facility-close-confirm"
+                    onClick={handleConfirmCloseNearestFacilityResults}
+                  >
+                    Close results
+                  </button>
+                </div>
+              </div>
+            </section>
           </div>
         )}
 
@@ -1265,6 +1401,13 @@ export default function App() {
             >
               Proposed OLT
             </button>
+            <button
+              type="button"
+              className={`feature-module-tab ${activeFeatureModule === 'odn-upload' ? 'active' : ''}`}
+              onClick={() => handleFeatureModuleToggle('odn-upload')}
+            >
+              Upload ODN
+            </button>
           </div>
 
           {activeFeatureModule === 'shortest-path' && (
@@ -1367,6 +1510,29 @@ export default function App() {
                 {isSavingProposedOlt ? 'Saving...' : 'Save proposed OLT'}
               </button>
             </form>
+          )}
+
+          {activeFeatureModule === 'odn-upload' && (
+            <section className="odn-upload-panel" aria-label="Upload ODN CSV">
+              <div className="odn-upload-title">Upload ODNs</div>
+              <p>Upload a CSV to replace the current Selected ODNs list.</p>
+              <div className="odn-upload-actions">
+                <button type="button" onClick={downloadOdnUploadTemplate}>
+                  Download template
+                </button>
+                <button type="button" className="odn-upload-primary" onClick={() => odnUploadInputRef.current?.click()}>
+                  Upload CSV
+                </button>
+              </div>
+              <input
+                ref={odnUploadInputRef}
+                className="odn-upload-input"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={handleOdnUpload}
+              />
+              <small>Required: FEATID, ODNC_CONT_TYPE, ODNC_FACILITY_ID</small>
+            </section>
           )}
         </div>
       </main>
